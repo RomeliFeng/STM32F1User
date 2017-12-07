@@ -10,39 +10,76 @@
 namespace User {
 namespace Communication {
 
+/*
+ * author Romeli
+ * explain 获取缓冲区内的缓冲字符数量
+ * return uint16_t
+ */
 uint16_t Steam::Available() {
 	return _RxBuf.front <= _RxBuf.tail ?
 			_RxBuf.tail - _RxBuf.front :
 			_RxBuf.size - _RxBuf.front + _RxBuf.tail;
 }
 
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-Status_Typedef Steam::Write(uint8_t* data, uint16_t len) {
-	return Status_Ok;
-}
-#pragma GCC diagnostic pop
-
+/*
+ * author Romeli
+ * explain 通过流写单字节
+ * param data 数据
+ * return Status_Typedef
+ */
 inline Status_Typedef Steam::Write(uint8_t data) {
 	return Write(&data, 1);
 }
 
+/*
+ * author Romeli
+ * explain 通过流写字符串
+ * param 字符串地址
+ * return Status_Typedef
+ */
 Status_Typedef Steam::Print(void* str) {
 	uint16_t len = getLen((uint8_t *) str);
-	return Write((uint8_t *) str, len);
+	if (len != 0) {
+		return Write((uint8_t *) str, len);
+	} else {
+		DebugOut("Error @Romeli 空数组");
+		return Status_Error;
+	}
 }
 
+/*
+ * author Romeli
+ * explain 通过流打印整形数
+ * param1 num 整形数
+ * param2 base 进制
+ * return Status_Typedef
+ */
 Status_Typedef Steam::Print(int32_t num, uint8_t base) {
 	uint8_t str[32];
 	uint16_t len = byNumber(num, base, str);
 	return Write(str, len);
 }
 
+/*
+ * author Romeli
+ * explain 通过流打印浮点数
+ * param1 flo 浮点数
+ * param2 ndigit 小数位数
+ * return Status_Typedef
+ */
 Status_Typedef Steam::Print(double flo, uint8_t ndigit) {
 	uint8_t str[32];
 	uint16_t len = byFloat(flo, ndigit, str);
 	return Write(str, len);
 }
 
+/*
+ * author Romeli
+ * explain 从流中读取指定数据长度
+ * param1 data 读回数据存放数组
+ * param2 len 读取数据长度
+ * return Status_Typedef
+ */
 Status_Typedef Steam::Read(uint8_t* data, uint16_t len) {
 	//循环读取
 	for (uint8_t i = 0; i < len; ++i) {
@@ -51,18 +88,37 @@ Status_Typedef Steam::Read(uint8_t* data, uint16_t len) {
 	return Status_Ok;
 }
 
+/*
+ * author Romeli
+ * explain 从流中读取一个字节
+ * param1 data 读回数据存放位置
+ * return Status_Typedef
+ */
 Status_Typedef Steam::Read(uint8_t* data) {
 	//读取一个数
 	*data = _RxBuf.data[_RxBuf.front];
 	return SpInc(&_RxBuf);
 }
 
+/*
+ * author Romeli
+ * explain 偷看一个字节（不移动缓冲指针）
+ * param data 读回数据存放位置
+ * return Status_Typedef
+ */
 Status_Typedef Steam::Peek(uint8_t* data) {
 	//偷看一个数
 	*data = _RxBuf.data[_RxBuf.front];
 	return Status_Ok;
 }
 
+/*
+ * author Romeli
+ * explain 偷看下一个数字
+ * param1 data 读取的数字存放位置
+ * param2 ignore 忽略的字符
+ * return Status_Typedef
+ */
 Status_Typedef Steam::PeekNextDigital(uint8_t *data, uint8_t ignore,
 		bool detectDecimal) {
 	//偷看一个数
@@ -76,6 +132,13 @@ Status_Typedef Steam::PeekNextDigital(uint8_t *data, uint8_t ignore,
 	return Status_Ok;
 }
 
+/*
+ * author Romeli
+ * explain 从流中读取一个整形数
+ * param1 num 读取的整数存放位置
+ * param2 ignore 忽略的字符
+ * return Status_Typedef
+ */
 Status_Typedef Steam::NextInt(void *num, uint8_t ignore) {
 	bool firstChar = true;
 	bool isNeg = false;
@@ -121,6 +184,13 @@ Status_Typedef Steam::NextInt(void *num, uint8_t ignore) {
 	}
 }
 
+/*
+ * author Romeli
+ * explain 从流中读取一个浮点数
+ * param1 flo 读取的浮点数存放位置
+ * param2 ignore 忽略的字符
+ * return Status_Typedef
+ */
 Status_Typedef Steam::NextFloat(void* flo, uint8_t ignore) {
 	double f = 0;
 	double frac = 1.0;
@@ -183,31 +253,60 @@ Status_Typedef Steam::NextFloat(void* flo, uint8_t ignore) {
 	}
 }
 
-inline bool Steam::IsEmpty(DataStack_Typedef* stack) {
+/*
+ * author Romeli
+ * explain 检查站内是否有数据
+ * param steam 栈地址
+ * return bool
+ */
+inline bool Steam::IsEmpty(DataSteam_Typedef* steam) {
 	//判断缓冲区是否为空
-	return stack->front == stack->tail;
+	return steam->front == steam->tail;
 }
 
-Status_Typedef Steam::SpInc(DataStack_Typedef *stack) {
-	if (IsEmpty(stack)) {
+/*
+ * author Romeli
+ * explain 向下移动流指针
+ * param1 steam 流指针
+ * return Status_Typedef
+ */
+Status_Typedef Steam::SpInc(DataSteam_Typedef *steam) {
+	if (IsEmpty(steam)) {
 		//缓冲区为空
 		return Status_Error;
 	} else {
 		//缓冲区指针+1
-		stack->front = (stack->front + 1) % stack->size;
+		steam->front = (steam->front + 1) % steam->size;
 		return Status_Ok;
 	}
 }
 
-Status_Typedef Steam::SpDec(DataStack_Typedef* stack) {
-	stack->front = stack->front == 0 ? stack->size : stack->front - 1;
+/*
+ * author Romeli
+ * explain 向上移动流指针
+ * param1 steam 流指针
+ * return Status_Typedef
+ */
+Status_Typedef Steam::SpDec(DataSteam_Typedef* steam) {
+	steam->front = steam->front == 0 ? steam->size : steam->front - 1;
 	return Status_Ok;
 }
 
+/*
+ * author Romeli
+ * explain 清空读取流内数据
+ * return void
+ */
 void Steam::Clear() {
 	_RxBuf.front = _RxBuf.tail;
 }
 
+/*
+ * author Romeli
+ * explain 计算字符串长度
+ * param str 字符串地址
+ * return uint16_t
+ */
 uint16_t Steam::getLen(uint8_t* str) {
 	uint16_t len = 0;
 	for (len = 0; *(str + len) != '\0'; ++len)

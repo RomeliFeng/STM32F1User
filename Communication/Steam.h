@@ -11,17 +11,18 @@
 #include "cmsis_device.h"
 #include "Tool/Convert.h"
 #include "Typedef.h"
+#include "Debug.h"
 
 namespace User {
 namespace Communication {
 
-typedef struct _DataStack_Typedef {
+typedef struct _DataSteam_Typedef {
 	uint8_t* data;
 	volatile uint16_t front;
 	volatile uint16_t tail;
 	uint16_t size;
 	volatile bool busy;
-} DataStack_Typedef;
+} DataSteam_Typedef;
 
 class Steam: public Tool::Convert {
 public:
@@ -44,7 +45,16 @@ public:
 		delete _TxBuf.data;
 	}
 
-	virtual Status_Typedef Write(uint8_t *data, uint16_t len);
+	//接口
+	/*
+	 * author Romeli
+	 * explain 通过流写数组
+	 * param1 data 数组的首地址
+	 * param2 len 数组的长度
+	 * return Status_Typedef
+	 */
+	virtual Status_Typedef Write(uint8_t *data, uint16_t len) = 0;
+	//虚函数
 	virtual Status_Typedef Write(uint8_t data);
 
 	Status_Typedef Print(void *str);
@@ -87,14 +97,16 @@ public:
 	virtual Status_Typedef NextFloat(void *flo, uint8_t ignore = 0);
 
 	virtual uint16_t Available();
-	virtual bool IsEmpty(DataStack_Typedef *stack);
+	virtual bool IsEmpty(DataSteam_Typedef *steam);
 	void Clear();
 protected:
-	DataStack_Typedef _RxBuf, _TxBuf;
-	Status_Typedef SpInc(DataStack_Typedef *stack);
-	Status_Typedef SpDec(DataStack_Typedef *stack);
+	DataSteam_Typedef _RxBuf, _TxBuf;
+	Status_Typedef SpInc(DataSteam_Typedef *steam);
+	Status_Typedef SpDec(DataSteam_Typedef *steam);
 private:
 	uint16_t getLen(uint8_t *str);
 };
 
+} /* namespace Communication */
+} /* namespace User*/
 #endif /* U_STEAM_H_ */

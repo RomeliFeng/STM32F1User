@@ -5,7 +5,7 @@
  *      Author: Romeli
  */
 
-#include <Communication/Encoder.h>
+#include <Device/Encoder.h>
 
 namespace User {
 namespace Device {
@@ -60,18 +60,20 @@ void Encoder::IRQAction() {
 }
 
 void Encoder::GPIOInit() {
-	GPIO_InitTypeDef GPIO_InitStructure;
+	DebugOut("This function should be override");
+	/*	GPIO_InitTypeDef GPIO_InitStructure;
 
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_9;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	 GPIO_Init(GPIOA, &GPIO_InitStructure);*/
 }
 
 void Encoder::TIMInit() {
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+	DebugOut("This function should be override");
+	/*	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
 
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 
@@ -92,22 +94,23 @@ void Encoder::TIMInit() {
 	TIM_ICStructInit(&TIM_ICInitStructure);
 	TIM_ICInitStructure.TIM_ICFilter = 1;
 	TIM_ICInit(_TIMx, &TIM_ICInitStructure);
-	_TIMx->CNT = 0;
+	 _TIMx->CNT = 0;*/
 }
 
 void Encoder::ITInit() {
-	NVIC_InitTypeDef NVIC_InitStructure;
+	DebugOut("This function should be override");
+	/*	NVIC_InitTypeDef NVIC_InitStructure;
 
 	NVIC_InitStructure.NVIC_IRQChannel = TIM1_UP_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
-			IT.U_Encoder2_TIM1_UP_IRQn.ITPriority_PreemptionPriority;
+			Encoder2_TIM1_UP_IRQn.ITPriority_PreemptionPriority;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority =
-			IT.U_Encoder2_TIM1_UP_IRQn.ITPriority_SubPriority;
+			Encoder2_TIM1_UP_IRQn.ITPriority_SubPriority;
 	NVIC_Init(&NVIC_InitStructure);
 
 	TIM_ClearITPendingBit(_TIMx, TIM_IT_Update);
-	TIM_ITConfig(_TIMx, TIM_IT_Update, ENABLE);
+	 TIM_ITConfig(_TIMx, TIM_IT_Update, ENABLE);*/
 }
 
 } /* namespace Device */

@@ -49,8 +49,7 @@ void StepMotorAccDecUnit::InitAll() {
 	}
 	if (_PoolSp == 0) {
 		//Error @Romeli 无速度计算单元（无法进行运动）
-		Debug::Print((uint8_t*) __FILE__, __LINE__,
-				"There have no speed control unit exsit");
+		DebugOut("There have no speed control unit exsit");
 	}
 }
 
@@ -85,8 +84,7 @@ StepMotorAccDecUnit* StepMotorAccDecUnit::GetFreeUnit(StepMotor* stepMotor) {
 		} else {
 			if (!unit->_StepMotor->_Busy) {
 				//Error @Romeli 释放了一个被锁定的速度控制单元（待验证）
-				Debug::Print((uint8_t*) __FILE__, __LINE__,
-						"There have no speed control unit exsit");
+				DebugOut("There have no speed control unit exsit");
 				//如果当前单元被占用，但是运动模块空闲，视为当前单元空闲，锁定当前单元供本次运动使用
 				unit->Free();
 				unit->Lock(stepMotor);
@@ -95,8 +93,7 @@ StepMotorAccDecUnit* StepMotorAccDecUnit::GetFreeUnit(StepMotor* stepMotor) {
 		}
 	}
 	//Error @Romeli 无可用的速度计算单元（超出最大同时运动轴数，应该避免）
-	Debug::Print((uint8_t*) __FILE__, __LINE__,
-			"There have no available speed control unit");
+	DebugOut("There have no available speed control unit");
 	return 0;
 }
 
@@ -216,7 +213,7 @@ uint16_t StepMotorAccDecUnit::GetCurSpeed() {
 		break;
 	default:
 		//Error @Romeli 错误的状态，不应该发生（超出最大同时运动轴数，应该避免）
-		Debug::Print((uint8_t*) __FILE__, __LINE__, "Status Error!");
+		DebugOut("Status Error!");
 		return STEP_MOTOR_MIN_SPEED;
 		break;
 	}
@@ -231,8 +228,7 @@ uint16_t StepMotorAccDecUnit::GetCurSpeed() {
 void StepMotorAccDecUnit::SetCurSpeed(uint16_t speed) {
 	if (speed < 200) {
 		//Error @Romeli 速度小于最低速度
-		Debug::Print((uint8_t*) __FILE__, __LINE__,
-				"There have no available speed control unit");
+		DebugOut("There have no available speed control unit");
 		speed = 200;
 	}
 	_TIMx->CNT = speed;
@@ -256,6 +252,7 @@ void StepMotorAccDecUnit::SMSpeedCtlIRQ() {
  * return void
  */
 void StepMotorAccDecUnit::TIMInit() {
+	DebugOut("This function should be override");
 	/*	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 
 	 RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE);
@@ -277,6 +274,7 @@ void StepMotorAccDecUnit::TIMInit() {
  * return void
  */
 void StepMotorAccDecUnit::ITInit() {
+	DebugOut("This function should be override");
 	/*	NVIC_InitTypeDef NVIC_InitStructure;
 	 //设置中断
 	 NVIC_InitStructure.NVIC_IRQChannel = TIM7_IRQn;

@@ -53,8 +53,7 @@ void StepMotor::InitAll() {
 	}
 	if (_PoolSp == 0) {
 		//Error @Romeli 无运动模块（无法进行运动）
-		Debug::Print((uint8_t*) __FILE__, __LINE__,
-				"There have no speed control unit exsit");
+		DebugOut("There have no speed control unit exsit");
 	}
 	//初始化所有的速度计算单元
 	StepMotorAccDecUnit::InitAll();
@@ -91,8 +90,7 @@ Status_Typedef StepMotor::Move(uint32_t step, StepMotorDir_Typedef dir) {
 	_AccDecUnit = StepMotorAccDecUnit::GetFreeUnit(this);
 	if (_AccDecUnit == 0) {
 		//没有可用的速度计算单元，放弃本次运动任务
-		Debug::Print((uint8_t*) __FILE__, __LINE__,
-				"Get speed control unit fail,stop move");
+		DebugOut("Get speed control unit fail,stop move");
 		_Busy = false;
 		return Status_Error;
 	}
@@ -226,7 +224,7 @@ void StepMotor::PulIRQ() {
 		break;
 	default:
 		//Error @Romeli 不可能到达位置（内存溢出）
-		Debug::Print((uint8_t*) __FILE__, __LINE__, "Unkown error");
+		DebugOut("Unkown error");
 		break;
 	}
 	TIM_CLEAR_UPDATE_FLAG(_TIMx);
@@ -238,6 +236,7 @@ void StepMotor::PulIRQ() {
  * return void
  */
 void StepMotor::GPIOInit() {
+	DebugOut("This function should be override");
 	/*	GPIO_InitTypeDef GPIO_InitStructure;
 
 	 RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
@@ -262,6 +261,7 @@ void StepMotor::GPIOInit() {
  * return void
  */
 void StepMotor::TIMInit() {
+	DebugOut("This function should be override");
 	/*	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 
 	 RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
@@ -302,6 +302,7 @@ void StepMotor::TIMInit() {
  * return void
  */
 void StepMotor::ITInit() {
+	DebugOut("This function should be override");
 	/*	NVIC_InitTypeDef NVIC_InitStructure;
 	 //设置中断
 

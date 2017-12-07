@@ -9,6 +9,7 @@
 #define U_PARSE_H_
 
 #include "cmsis_device.h"
+#include "Debug.h"
 
 namespace User {
 namespace Tool {
@@ -38,7 +39,7 @@ public:
 	}
 protected:
 	static uint8_t getLen(uint32_t num, uint8_t base);
-	static double pow10(uint8_t power);
+	static uint32_t pow10(uint8_t power);
 	static uint8_t strcat(uint8_t* str_to, uint8_t str_to_len,
 			uint8_t* str_from, uint8_t str_from_len);
 };

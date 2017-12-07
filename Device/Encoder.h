@@ -10,6 +10,7 @@
 
 #include "cmsis_device.h"
 #include "ITPriority.h"
+#include "Debug.h"
 
 namespace User {
 namespace Device {

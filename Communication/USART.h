@@ -12,6 +12,7 @@
 #include "cmsis_device.h"
 #include "ITPriority.h"
 #include "Steam.h"
+#include "Debug.h"
 
 namespace User {
 namespace Communication {
@@ -30,11 +31,13 @@ typedef enum {
 
 class USART: public Steam {
 public:
-	USART(uint16_t rxBufSize, uint16_t txBufSize);
+	USART(uint16_t rxBufSize, uint16_t txBufSize, USART_TypeDef* USARTx,
+			DMA_TypeDef* DMAx, DMA_Channel_TypeDef* DMAy_Channelx_Rx,
+			DMA_Channel_TypeDef* DMAy_Channelx_Tx);
 	virtual ~USART();
 
 	void Init(uint32_t baud, uint16_t USART_Parity = USART_Parity_No,
-			USART485Status_Typedef rs485Status = USART485Status_Disable,
+			USART485Status_Typedef RS485Status = USART485Status_Disable,
 			USARTMode_Typedef mode = USARTMode_DMA);
 
 	Status_Typedef Write(uint8_t* data, uint16_t len);
@@ -51,22 +54,25 @@ protected:
 	DMA_Channel_TypeDef *_DMAy_Channelx_Rx, *_DMAy_Channelx_Tx;
 	uint32_t _DMA_IT_TC_TX;
 
-	virtual void GPIOInit(USART485Status_Typedef status);
-	virtual void USARTInit(uint32_t baud, uint16_t USART_Parity);
-	virtual void DMAInit();
-	virtual void ITInit(USARTMode_Typedef mode);
-
-	virtual void RS485DirCtl(USART485Dir_Typedef dir);
+	virtual void USARTRCCInit() = 0;
+	virtual void DMARCCInit() = 0;
+	virtual void GPIOInit() = 0;
+	virtual void ITInit(USARTMode_Typedef mode) = 0;
+	virtual void RDPinCtl(BitAction BitVal) = 0;
 private:
 	volatile bool _DMATxBusy;
 	volatile bool _newFrame;
-	DataStack_Typedef _DMARxBuf;
-	DataStack_Typedef _TxBuf2;
+	DataSteam_Typedef _DMARxBuf;
+	DataSteam_Typedef _TxBuf2;
 
 	USARTMode_Typedef _mode;
-	USART485Status_Typedef _rs485Status;
+	USART485Status_Typedef _RS485Status;
 
-	Status_Typedef DMASend(DataStack_Typedef *stack, DataStack_Typedef *txBuf);
+	void USARTInit(uint32_t baud, uint16_t USART_Parity);
+	void DMAInit();
+
+	Status_Typedef DMASend(DataSteam_Typedef *stack, DataSteam_Typedef *txBuf);
+	void RS485DirCtl(USART485Dir_Typedef dir);
 };
 
 } /* namespace Communication */

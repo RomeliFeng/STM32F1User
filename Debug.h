@@ -13,6 +13,8 @@
 
 namespace User {
 
+#define DebugOut(message) (Debug::Print((uint8_t*) (__FILE__), __LINE__, message))
+
 class Debug {
 public:
 	static void Print(uint8_t* file, uint32_t line, const char* message);

@@ -13,13 +13,15 @@ namespace Communication {
 #define CR1_UE_Set                ((uint16_t)0x2000)  /*!< USART Enable Mask */
 #define CR1_UE_Reset              ((uint16_t)0xDFFF)  /*!< USART Disable Mask */
 
-USART::USART(uint16_t rxBufSize, uint16_t txBufSize) :
+USART::USART(uint16_t rxBufSize, uint16_t txBufSize, USART_TypeDef* USARTx,
+		DMA_TypeDef* DMAx, DMA_Channel_TypeDef* DMAy_Channelx_Rx,
+		DMA_Channel_TypeDef* DMAy_Channelx_Tx) :
 		Steam(rxBufSize, txBufSize) {
 	//默认设置
-	_USARTx = USART3;
-	_DMAx = DMA1;
-	_DMAy_Channelx_Rx = DMA1_Channel3;
-	_DMAy_Channelx_Tx = DMA1_Channel2;
+	_USARTx = USARTx;
+	_DMAx = DMAx;
+	_DMAy_Channelx_Rx = DMAy_Channelx_Rx;
+	_DMAy_Channelx_Tx = DMAy_Channelx_Tx;
 
 	if (_DMAy_Channelx_Tx == DMA1_Channel1) {
 		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC1;
@@ -58,18 +60,31 @@ USART::USART(uint16_t rxBufSize, uint16_t txBufSize) :
 	_TxBuf2.busy = false;
 
 	_mode = USARTMode_DMA;
-	_rs485Status = USART485Status_Disable;
+	_RS485Status = USART485Status_Disable;
 }
 
 USART::~USART() {
 }
 
+/*
+ * author Romeli
+ * explain 初始化串口
+ * param1 baud 波特率
+ * param2 USART_Parity 校验位
+ * param3 rs485Status 书否是RS485
+ * param4 mode 中断模式还是DMA模式
+ * return void
+ */
 void USART::Init(uint32_t baud, uint16_t USART_Parity,
-		USART485Status_Typedef rs485Status, USARTMode_Typedef mode) {
+		USART485Status_Typedef RS485Status, USARTMode_Typedef mode) {
 	_mode = mode;
-	_rs485Status = rs485Status;
+	_RS485Status = RS485Status;
 	//GPIO初始化
-	GPIOInit(_rs485Status);
+	GPIOInit();
+	//如果有流控引脚，使用切换为接受模式
+	if (_RS485Status == USART485Status_Enable) {
+		RS485DirCtl(USART485Dir_Rx);
+	}
 	//USART外设初始化
 	USARTInit(baud, USART_Parity);
 	if (mode == USARTMode_DMA) {
@@ -82,8 +97,15 @@ void USART::Init(uint32_t baud, uint16_t USART_Parity,
 	_USARTx->CR1 |= CR1_UE_Set;
 }
 
+/*
+ * author Romeli
+ * explain 向串口里写数组
+ * param1 data 数组地址
+ * param2 len 数组长度
+ * return Status_Typedef
+ */
 Status_Typedef USART::Write(uint8_t* data, uint16_t len) {
-	DataStack_Typedef statck;
+	DataSteam_Typedef statck;
 	statck.data = data;
 	statck.tail = len;
 	if (_mode == USARTMode_DMA) {
@@ -112,6 +134,11 @@ Status_Typedef USART::Write(uint8_t* data, uint16_t len) {
 	return Status_Ok;
 }
 
+/*
+ * author Romeli
+ * explain 检查是否收到一帧新的我数据
+ * return bool
+ */
 bool USART::CheckFrame() {
 	if (_newFrame) {
 		//读取到帧接收标志后将其置位
@@ -122,10 +149,20 @@ bool USART::CheckFrame() {
 	}
 }
 
+/*
+ * author Romeli
+ * explain 串口接收事件，收到一帧数据后进入
+ * return void
+ */
 __attribute__((weak)) void USART::ReceiveEvent() {
 
 }
 
+/*
+ * author Romeli
+ * explain 串口接收中断
+ * return Status_Typedef
+ */
 Status_Typedef USART::USARTIRQ() {
 	//读取串口标志寄存器
 	uint16_t staus = _USARTx->SR;
@@ -150,6 +187,7 @@ Status_Typedef USART::USARTIRQ() {
 			//开启DMA接收
 			_DMAy_Channelx_Rx->CCR |= DMA_CCR1_EN;
 		}
+		//清除标志位
 		USART_ReceiveData(_USARTx);
 		//串口帧接收事件
 		ReceiveEvent();
@@ -168,6 +206,11 @@ Status_Typedef USART::USARTIRQ() {
 	return Status_Ok;
 }
 
+/*
+ * author Romeli
+ * explain 串口DMA发送中断
+ * return Status_Typedef
+ */
 Status_Typedef USART::DMATxIRQ() {
 	//暂时关闭DMA接收
 	_DMAy_Channelx_Tx->CCR &= (uint16_t) (~DMA_CCR1_EN);
@@ -212,7 +255,7 @@ Status_Typedef USART::DMATxIRQ() {
 		return Status_Error;
 	}
 
-	if (_rs485Status == USART485Status_Enable) {
+	if (_RS485Status == USART485Status_Enable) {
 		while (!(_USARTx->SR & USART_FLAG_TC))
 			;
 		RS485DirCtl(USART485Dir_Rx);
@@ -220,39 +263,87 @@ Status_Typedef USART::DMATxIRQ() {
 	return Status_Ok;
 }
 
-void USART::GPIOInit(USART485Status_Typedef status) {
-	GPIO_InitTypeDef GPIO_InitStructure;
-	//开启GPIOC时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO, ENABLE);
+/*
+ * author Romeli
+ * explain GPIO初始化，派生类需实现
+ * return void
+ */
+void USART::GPIOInit() {
+	/*	GPIO_InitTypeDef GPIO_InitStructure;
+	 //开启GPIOC时钟
+	 RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO, ENABLE);
 
-	GPIO_PinRemapConfig(GPIO_PartialRemap_USART3, ENABLE);
+	 GPIO_PinRemapConfig(GPIO_PartialRemap_USART3, ENABLE);
 
-	//设置PC10复用输出模式（TX）
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
+	 //设置PC10复用输出模式（TX）
+	 GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+	 GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	 GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	 GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-	//设置PC11上拉输入模式（RX）
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
+	 //设置PC11上拉输入模式（RX）
+	 GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
+	 GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+	 GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-	if (status == USART485Status_Enable) {
-		//设置PC12流控制引脚
-		GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-		GPIO_Init(GPIOC, &GPIO_InitStructure);
-
-		RS485DirCtl(USART485Dir_Rx);
-	}
+	 if (status == USART485Status_Enable) {
+	 //设置PC12流控制引脚
+	 GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+	 GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	 GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	 GPIO_Init(GPIOC, &GPIO_InitStructure);
+	 }*/
 }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+/*
+ * author Romeli
+ * explain IT初始化（派生类需实现）
+ * return void
+ */
+void USART::ITInit(USARTMode_Typedef mode) {
+//	NVIC_InitTypeDef NVIC_InitStructure;
+//
+//	if (mode == USARTMode_DMA) {
+//		//配置DMA中断
+//		NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel2_IRQn;
+//		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
+//				USART3_DMA1_Channel2_IRQn.ITPriority_PreemptionPriority;
+//		NVIC_InitStructure.NVIC_IRQChannelSubPriority =
+//				USART3_DMA1_Channel2_IRQn.ITPriority_SubPriority;
+//		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+//		NVIC_Init(&NVIC_InitStructure);
+//
+//		NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel3_IRQn;
+//		NVIC_Init(&NVIC_InitStructure);
+//
+//		//串口发送接收的DMA功能
+//		USART_DMACmd(_USARTx, USART_DMAReq_Tx, ENABLE);
+//		USART_DMACmd(_USARTx, USART_DMAReq_Rx, ENABLE);
+//	} else {
+//		//开启串口的字节接收中断
+//		USART_ITConfig(_USARTx, USART_IT_RXNE, ENABLE);
+//	}
+//
+//	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
+//	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+//	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
+//			USART3_USART3_IRQn.ITPriority_PreemptionPriority;
+//	NVIC_InitStructure.NVIC_IRQChannelSubPriority =
+//			USART3_USART3_IRQn.ITPriority_SubPriority;
+//
+//	NVIC_Init(&NVIC_InitStructure);
+//
+//	//开启串口的帧接收中断
+//	USART_ITConfig(_USARTx, USART_IT_IDLE, ENABLE);
+}
+#pragma GCC diagnostic pop
 
 void USART::USARTInit(uint32_t baud, uint16_t USART_Parity) {
 	USART_InitTypeDef USART_InitStructure;
 	//开启USART3时钟
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
+	USARTRCCInit();
 
 	//配置USART3 全双工 停止位1 无校验
 	USART_DeInit(_USARTx);
@@ -287,7 +378,7 @@ void USART::DMAInit() {
 	_TxBuf2.data = new uint8_t[_TxBuf2.size];
 
 	//开启DMA时钟
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+	DMARCCInit();
 
 	DMA_DeInit(_DMAy_Channelx_Tx);
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t) (&_USARTx->DR);
@@ -324,75 +415,38 @@ void USART::DMAInit() {
 	DMA_Cmd(_DMAy_Channelx_Rx, ENABLE);
 }
 
-void USART::ITInit(USARTMode_Typedef mode) {
-	NVIC_InitTypeDef NVIC_InitStructure;
-
-	if (mode == USARTMode_DMA) {
-		//配置DMA中断
-		NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel2_IRQn;
-		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
-				IT.USART3_DMA1_Channel2_IRQn.ITPriority_PreemptionPriority;
-		NVIC_InitStructure.NVIC_IRQChannelSubPriority =
-				IT.USART3_DMA1_Channel2_IRQn.ITPriority_SubPriority;
-		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-		NVIC_Init(&NVIC_InitStructure);
-
-		NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel3_IRQn;
-		NVIC_Init(&NVIC_InitStructure);
-
-		//串口发送接收的DMA功能
-		USART_DMACmd(_USARTx, USART_DMAReq_Tx, ENABLE);
-		USART_DMACmd(_USARTx, USART_DMAReq_Rx, ENABLE);
-	} else {
-		//开启串口的字节接收中断
-		USART_ITConfig(_USARTx, USART_IT_RXNE, ENABLE);
-	}
-
-	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
-			IT.USART3_USART3_IRQn.ITPriority_PreemptionPriority;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority =
-			IT.USART3_USART3_IRQn.ITPriority_SubPriority;
-
-	NVIC_Init(&NVIC_InitStructure);
-
-	//开启串口的帧接收中断
-	USART_ITConfig(_USARTx, USART_IT_IDLE, ENABLE);
-}
-
 void USART::RS485DirCtl(USART485Dir_Typedef dir) {
 	if (dir == USART485Dir_Rx) {
-		GPIOC->BRR = GPIO_Pin_12;
+		RDPinCtl(Bit_RESET);
 	} else {
-		GPIOC->BSRR = GPIO_Pin_12;
+		RDPinCtl(Bit_SET);
 	}
 }
 
-Status_Typedef USART::DMASend(DataStack_Typedef * stack,
-		DataStack_Typedef * txBuf) {
+Status_Typedef USART::DMASend(DataSteam_Typedef * steam,
+		DataSteam_Typedef * txBuf) {
 	uint16_t avaSize, end;
-	if (stack->tail != 0) {
+	if (steam->tail != 0) {
 		//置位忙标志，防止计算中DMA自动加载发送缓冲
 		txBuf->busy = true;
 		//计算缓冲区空闲空间大小
 		avaSize = txBuf->size - txBuf->tail;
 		//根据空闲空间大小计算搬移结束位置
-		if (stack->tail > avaSize) {
-			end = stack->tail - avaSize;
+		if (steam->tail > avaSize) {
+			end = steam->tail - avaSize;
 		} else {
 			end = 0;
 		}
 
 		//填充数据，并且偏移指针
-		for (; stack->tail > end; --stack->tail) {
-			txBuf->data[txBuf->tail++] = *stack->data++;
+		for (; steam->tail > end; --steam->tail) {
+			txBuf->data[txBuf->tail++] = *steam->data++;
 		}
 		if (!_DMATxBusy) {
 			//DMA发送空闲，发送新的缓冲
 			_DMATxBusy = true;
 
-			if (_rs485Status == USART485Status_Enable) {
+			if (_RS485Status == USART485Status_Enable) {
 				RS485DirCtl(USART485Dir_Tx);
 			}
 
