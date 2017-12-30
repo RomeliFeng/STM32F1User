@@ -8,13 +8,11 @@
 #ifndef U_PARSE_H_
 #define U_PARSE_H_
 
+#include <U_Debug.h>
 #include "cmsis_device.h"
-#include "Debug.h"
 
-namespace User {
-namespace Tool {
 
-class Convert {
+class U_Convert {
 public:
 	static uint8_t byNumber(int32_t num, uint8_t base, uint8_t* str);
 	static inline uint8_t byNumber(int16_t num, uint8_t base, uint8_t* str) {
@@ -44,7 +42,5 @@ protected:
 			uint8_t* str_from, uint8_t str_from_len);
 };
 
-} /* namespace Device */
-} /* namespace Tool*/
 
 #endif /* U_PARSE_H_ */

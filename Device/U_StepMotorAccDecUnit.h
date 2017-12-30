@@ -1,5 +1,5 @@
 /*
- * StepMotorAccDecUnit.h
+ * U_StepMotorAccDecUnit.h
  *
  *  Created on: 2017年11月7日
  *      Author: Romeli
@@ -8,14 +8,11 @@
 #ifndef SMSpeedCtlUnit_H_
 #define SMSpeedCtlUnit_H_
 
+#include <U_Debug.h>
+#include <U_Typedef.h>
 #include "cmsis_device.h"
 #include "ITPriority.h"
-#include "Debug.h"
-#include "Typedef.h"
-#include "StepMotor.h"
-
-namespace User {
-namespace Device {
+#include "U_StepMotor.h"
 
 typedef enum {
 	StepMotorAccDecUnitMode_Accel, StepMotorAccDecUnitMode_Decel
@@ -25,19 +22,20 @@ typedef enum {
  * author Romeli
  * ps 提取对象时线程不安全，确保提取操作只在主线程中进行
  */
-class StepMotorAccDecUnit {
+class U_StepMotorAccDecUnit {
 public:
 	//构造函数
-	StepMotorAccDecUnit();
-	virtual ~StepMotorAccDecUnit();
+	U_StepMotorAccDecUnit(TIM_TypeDef* TIMx);
+	virtual ~U_StepMotorAccDecUnit();
+
+	void Init();
 
 	static void InitAll();
-	virtual void Init();
 
-	static StepMotorAccDecUnit* GetFreeUnit(StepMotor* stepMotor);
-	static void Free(StepMotor* stepMotor);
+	static U_StepMotorAccDecUnit* GetFreeUnit(U_StepMotor* stepMotor);
+	static void Free(U_StepMotor* stepMotor);
 	void Free();
-	void Lock(StepMotor* stepMotor);
+	void Lock(U_StepMotor* stepMotor);
 	void Start(StepMotorAccDecUnitMode_Typedef mode);
 	void Stop();
 
@@ -56,15 +54,15 @@ public:
 	void SetCurSpeed(uint16_t speed);
 
 	//中断服务函数
-	void SMSpeedCtlIRQ();
+	void IRQ();
 protected:
 	TIM_TypeDef* _TIMx;	//速度计算用定时器
-	StepMotor* _StepMotor;
+	U_StepMotor* _StepMotor;
 
-	virtual void TIMInit();
-	virtual void ITInit();
+	virtual void TIMRCCInit() = 0;
+	virtual void ITInit() = 0;
 private:
-	static StepMotorAccDecUnit* _Pool[];
+	static U_StepMotorAccDecUnit* _Pool[];
 	static uint8_t _PoolSp;
 
 	StepMotorAccDecUnitMode_Typedef _Mode;
@@ -73,9 +71,9 @@ private:
 	uint32_t _Decel;
 	bool _Done;
 	volatile bool _Busy;
+
+	void TIMInit();
 };
 
-} /* namespace Device */
-} /* namespace User */
 
 #endif /* SMSpeedCtlUnit_H_ */

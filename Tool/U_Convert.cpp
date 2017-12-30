@@ -1,14 +1,11 @@
 /*
- * Convert.cpp
+ * U_Convert.cpp
  *
  *  Created on: 2016��10��6��
  *      Author: Romeli
  */
 
-#include "Convert.h"
-
-namespace User {
-namespace Tool {
+#include <Tool/U_Convert.h>
 
 /*
  * author Romeli
@@ -18,7 +15,7 @@ namespace Tool {
  * param3 str 目标字符串地址
  * return uint8_t
  */
-uint8_t Convert::byNumber(int32_t num, uint8_t base, uint8_t* str) {
+uint8_t U_Convert::byNumber(int32_t num, uint8_t base, uint8_t* str) {
 	uint8_t len = 0;
 	//小于零取反加负号
 	if (num < 0) {
@@ -47,7 +44,7 @@ uint8_t Convert::byNumber(int32_t num, uint8_t base, uint8_t* str) {
  * param3 str 目标字符串地址
  * return uint8_t
  */
-uint8_t Convert::byFloat(double flo, uint8_t ndigit, uint8_t* str) {
+uint8_t U_Convert::byFloat(double flo, uint8_t ndigit, uint8_t* str) {
 	uint8_t len = 0, len2 = 0;
 	uint32_t int_part = 0;
 	double rem_part = 0;
@@ -94,7 +91,7 @@ uint8_t Convert::byFloat(double flo, uint8_t ndigit, uint8_t* str) {
  * param2 base 进制
  * return uint8_t
  */
-uint8_t Convert::getLen(uint32_t num, uint8_t base) {
+uint8_t U_Convert::getLen(uint32_t num, uint8_t base) {
 	uint8_t i;
 	if (num == 0) {
 		return 1;
@@ -111,7 +108,7 @@ uint8_t Convert::getLen(uint32_t num, uint8_t base) {
  * param power 次方数
  * return uint32_t
  */
-uint32_t Convert::pow10(uint8_t power) {
+uint32_t U_Convert::pow10(uint8_t power) {
 	if (power == 0)
 		return 1;
 	else
@@ -127,7 +124,8 @@ uint32_t Convert::pow10(uint8_t power) {
  * param4 str_from_len 被拼接的字符串长度
  * return uint8_t
  */
-uint8_t Convert::strcat(uint8_t* str_to, uint8_t str_to_len, uint8_t* str_from,
+uint8_t U_Convert::strcat(uint8_t* str_to, uint8_t str_to_len,
+		uint8_t* str_from,
 		uint8_t str_from_len) {
 	uint8_t i;
 	for (i = 0; i < str_from_len; ++i) { //搬移数据
@@ -136,6 +134,3 @@ uint8_t Convert::strcat(uint8_t* str_to, uint8_t str_to_len, uint8_t* str_from,
 	str_to[str_to_len + i] = '\0'; //在字符串末尾填'\0'
 	return (uint8_t) (str_to_len + str_from_len); //返回字符串长度
 }
-
-} /* namespace Device */
-} /* namespace Tool*/

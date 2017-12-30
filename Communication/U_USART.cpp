@@ -1,22 +1,19 @@
 /*
- * USART.cpp
+ * U_USART.cpp
  *
  *  Created on: 2017年9月27日
  *      Author: Romeli
  */
 
-#include <Communication/USART.h>
+#include <Communication/U_USART.h>
 
-namespace User {
-namespace Communication {
+#define CR1_UE_Set                ((uint16_t)0x2000)  /*!< U_USART Enable Mask */
+#define CR1_UE_Reset              ((uint16_t)0xDFFF)  /*!< U_USART Disable Mask */
 
-#define CR1_UE_Set                ((uint16_t)0x2000)  /*!< USART Enable Mask */
-#define CR1_UE_Reset              ((uint16_t)0xDFFF)  /*!< USART Disable Mask */
-
-USART::USART(uint16_t rxBufSize, uint16_t txBufSize, USART_TypeDef* USARTx,
+U_USART::U_USART(uint16_t rxBufSize, uint16_t txBufSize, USART_TypeDef* USARTx,
 		DMA_TypeDef* DMAx, DMA_Channel_TypeDef* DMAy_Channelx_Rx,
 		DMA_Channel_TypeDef* DMAy_Channelx_Tx) :
-		Steam(rxBufSize, txBufSize) {
+		U_Steam(rxBufSize, txBufSize) {
 	//默认设置
 	_USARTx = USARTx;
 	_DMAx = DMAx;
@@ -49,6 +46,8 @@ USART::USART(uint16_t rxBufSize, uint16_t txBufSize, USART_TypeDef* USARTx,
 		_DMA_IT_TC_TX = (uint32_t) DMA2_IT_TC5;
 	}
 
+	ReceiveEvent = NULL;
+
 	_newFrame = false;
 
 	_DMARxBuf.data = 0;
@@ -60,10 +59,10 @@ USART::USART(uint16_t rxBufSize, uint16_t txBufSize, USART_TypeDef* USARTx,
 	_TxBuf2.busy = false;
 
 	_mode = USARTMode_DMA;
-	_RS485Status = USART485Status_Disable;
+	_RS485Status = USARTRS485Status_Disable;
 }
 
-USART::~USART() {
+U_USART::~U_USART() {
 }
 
 /*
@@ -75,15 +74,15 @@ USART::~USART() {
  * param4 mode 中断模式还是DMA模式
  * return void
  */
-void USART::Init(uint32_t baud, uint16_t USART_Parity,
-		USART485Status_Typedef RS485Status, USARTMode_Typedef mode) {
+void U_USART::Init(uint32_t baud, uint16_t USART_Parity,
+		USARTRS485Status_Typedef RS485Status, USARTMode_Typedef mode) {
 	_mode = mode;
 	_RS485Status = RS485Status;
 	//GPIO初始化
 	GPIOInit();
 	//如果有流控引脚，使用切换为接受模式
-	if (_RS485Status == USART485Status_Enable) {
-		RS485DirCtl(USART485Dir_Rx);
+	if (_RS485Status == USARTRS485Status_Enable) {
+		RS485DirCtl(USARTRS485Dir_Rx);
 	}
 	//USART外设初始化
 	USARTInit(baud, USART_Parity);
@@ -104,7 +103,7 @@ void USART::Init(uint32_t baud, uint16_t USART_Parity,
  * param2 len 数组长度
  * return Status_Typedef
  */
-Status_Typedef USART::Write(uint8_t* data, uint16_t len) {
+Status_Typedef U_USART::Write(uint8_t* data, uint16_t len) {
 	DataSteam_Typedef statck;
 	statck.data = data;
 	statck.tail = len;
@@ -139,7 +138,7 @@ Status_Typedef USART::Write(uint8_t* data, uint16_t len) {
  * explain 检查是否收到一帧新的我数据
  * return bool
  */
-bool USART::CheckFrame() {
+bool U_USART::CheckFrame() {
 	if (_newFrame) {
 		//读取到帧接收标志后将其置位
 		_newFrame = false;
@@ -151,19 +150,10 @@ bool USART::CheckFrame() {
 
 /*
  * author Romeli
- * explain 串口接收事件，收到一帧数据后进入
- * return void
- */
-__attribute__((weak)) void USART::ReceiveEvent() {
-
-}
-
-/*
- * author Romeli
  * explain 串口接收中断
  * return Status_Typedef
  */
-Status_Typedef USART::USARTIRQ() {
+Status_Typedef U_USART::IRQUSART() {
 	//读取串口标志寄存器
 	uint16_t staus = _USARTx->SR;
 	if ((staus & USART_FLAG_IDLE) != 0) {
@@ -190,7 +180,9 @@ Status_Typedef USART::USARTIRQ() {
 		//清除标志位
 		USART_ReceiveData(_USARTx);
 		//串口帧接收事件
-		ReceiveEvent();
+		if (ReceiveEvent != NULL) {
+			ReceiveEvent();
+		}
 	}
 #ifndef USE_DMA
 	//串口字节接收中断置位
@@ -211,7 +203,7 @@ Status_Typedef USART::USARTIRQ() {
  * explain 串口DMA发送中断
  * return Status_Typedef
  */
-Status_Typedef USART::DMATxIRQ() {
+Status_Typedef U_USART::IRQDMATx() {
 	//暂时关闭DMA接收
 	_DMAy_Channelx_Tx->CCR &= (uint16_t) (~DMA_CCR1_EN);
 
@@ -255,10 +247,10 @@ Status_Typedef USART::DMATxIRQ() {
 		return Status_Error;
 	}
 
-	if (_RS485Status == USART485Status_Enable) {
+	if (_RS485Status == USARTRS485Status_Enable) {
 		while (!(_USARTx->SR & USART_FLAG_TC))
 			;
-		RS485DirCtl(USART485Dir_Rx);
+		RS485DirCtl(USARTRS485Dir_Rx);
 	}
 	return Status_Ok;
 }
@@ -268,7 +260,7 @@ Status_Typedef USART::DMATxIRQ() {
  * explain GPIO初始化，派生类需实现
  * return void
  */
-void USART::GPIOInit() {
+void U_USART::GPIOInit() {
 	/*	GPIO_InitTypeDef GPIO_InitStructure;
 	 //开启GPIOC时钟
 	 RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO, ENABLE);
@@ -286,7 +278,7 @@ void USART::GPIOInit() {
 	 GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
 	 GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-	 if (status == USART485Status_Enable) {
+	 if (status == USARTRS485Status_Enable) {
 	 //设置PC12流控制引脚
 	 GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
 	 GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
@@ -297,34 +289,24 @@ void USART::GPIOInit() {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+
 /*
  * author Romeli
  * explain IT初始化（派生类需实现）
  * return void
  */
-void USART::ITInit(USARTMode_Typedef mode) {
+void U_USART::ITInit() {
 //	NVIC_InitTypeDef NVIC_InitStructure;
+//	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel2_IRQn;
+//	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
+//			USART3_DMA1_Channel2_IRQn.ITPriority_PreemptionPriority;
+//	NVIC_InitStructure.NVIC_IRQChannelSubPriority =
+//			USART3_DMA1_Channel2_IRQn.ITPriority_SubPriority;
+//	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+//	NVIC_Init(&NVIC_InitStructure);
 //
-//	if (mode == USARTMode_DMA) {
-//		//配置DMA中断
-//		NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel2_IRQn;
-//		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
-//				USART3_DMA1_Channel2_IRQn.ITPriority_PreemptionPriority;
-//		NVIC_InitStructure.NVIC_IRQChannelSubPriority =
-//				USART3_DMA1_Channel2_IRQn.ITPriority_SubPriority;
-//		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-//		NVIC_Init(&NVIC_InitStructure);
-//
-//		NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel3_IRQn;
-//		NVIC_Init(&NVIC_InitStructure);
-//
-//		//串口发送接收的DMA功能
-//		USART_DMACmd(_USARTx, USART_DMAReq_Tx, ENABLE);
-//		USART_DMACmd(_USARTx, USART_DMAReq_Rx, ENABLE);
-//	} else {
-//		//开启串口的字节接收中断
-//		USART_ITConfig(_USARTx, USART_IT_RXNE, ENABLE);
-//	}
+//	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel3_IRQn;
+//	NVIC_Init(&NVIC_InitStructure);
 //
 //	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
 //	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -334,13 +316,19 @@ void USART::ITInit(USARTMode_Typedef mode) {
 //			USART3_USART3_IRQn.ITPriority_SubPriority;
 //
 //	NVIC_Init(&NVIC_InitStructure);
-//
-//	//开启串口的帧接收中断
-//	USART_ITConfig(_USARTx, USART_IT_IDLE, ENABLE);
 }
+
 #pragma GCC diagnostic pop
 
-void USART::USARTInit(uint32_t baud, uint16_t USART_Parity) {
+void U_USART::RS485DirCtl(USARTRS485Dir_Typedef dir) {
+	if (dir == USARTRS485Dir_Rx) {
+
+	} else {
+
+	}
+}
+
+void U_USART::USARTInit(uint32_t baud, uint16_t USART_Parity) {
 	USART_InitTypeDef USART_InitStructure;
 	//开启USART3时钟
 	USARTRCCInit();
@@ -362,7 +350,28 @@ void USART::USARTInit(uint32_t baud, uint16_t USART_Parity) {
 	USART_Init(_USARTx, &USART_InitStructure);
 }
 
-void USART::DMAInit() {
+/*
+ * author Romeli
+ * explain IT初始化
+ * return void
+ */
+void U_USART::ITInit(USARTMode_Typedef mode) {
+	//先调用派生类实现的NVIC初始化
+	ITInit();
+	if (mode == USARTMode_DMA) {
+		//串口发送接收的DMA功能
+		USART_DMACmd(_USARTx, USART_DMAReq_Tx, ENABLE);
+		USART_DMACmd(_USARTx, USART_DMAReq_Rx, ENABLE);
+	} else {
+		//开启串口的字节接收中断
+		USART_ITConfig(_USARTx, USART_IT_RXNE, ENABLE);
+	}
+
+	//开启串口的帧接收中断
+	USART_ITConfig(_USARTx, USART_IT_IDLE, ENABLE);
+}
+
+void U_USART::DMAInit() {
 	DMA_InitTypeDef DMA_InitStructure;
 
 	_DMARxBuf.size = _RxBuf.size;
@@ -415,15 +424,7 @@ void USART::DMAInit() {
 	DMA_Cmd(_DMAy_Channelx_Rx, ENABLE);
 }
 
-void USART::RS485DirCtl(USART485Dir_Typedef dir) {
-	if (dir == USART485Dir_Rx) {
-		RDPinCtl(Bit_RESET);
-	} else {
-		RDPinCtl(Bit_SET);
-	}
-}
-
-Status_Typedef USART::DMASend(DataSteam_Typedef * steam,
+Status_Typedef U_USART::DMASend(DataSteam_Typedef * steam,
 		DataSteam_Typedef * txBuf) {
 	uint16_t avaSize, end;
 	if (steam->tail != 0) {
@@ -446,8 +447,8 @@ Status_Typedef USART::DMASend(DataSteam_Typedef * steam,
 			//DMA发送空闲，发送新的缓冲
 			_DMATxBusy = true;
 
-			if (_RS485Status == USART485Status_Enable) {
-				RS485DirCtl(USART485Dir_Tx);
+			if (_RS485Status == USARTRS485Status_Enable) {
+				RS485DirCtl(USARTRS485Dir_Tx);
 			}
 
 			//设置DMA地址
@@ -462,6 +463,3 @@ Status_Typedef USART::DMASend(DataSteam_Typedef * steam,
 	}
 	return Status_Ok;
 }
-
-} /* namespace Communication */
-} /* namespace User*/

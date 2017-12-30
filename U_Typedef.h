@@ -1,14 +1,21 @@
 /*
- * Typedef.h
+* Typedef.h
  *
  *  Created on: 2017��1��8��
  *      Author: Romeli
  */
 
-#ifndef TYPEDEF_H_
-#define TYPEDEF_H_
+#ifndef U_TYPEDEF_H_
+#define U_TYPEDEF_H_
 
 #include "cmsis_device.h"
+
+#define TIM_ENABLE(TIMx) (TIMx->CR1 |= TIM_CR1_CEN)
+#define TIM_DISABLE(TIMx) (TIMx->CR1 &= (uint16_t) (~((uint16_t) TIM_CR1_CEN)))
+#define TIM_CLEAR_UPDATE_FLAG(TIMx) (TIMx->SR = (uint16_t) ~TIM_IT_Update)
+#define TIM_PSC_RELOAD(TIMx) (TIMx->EGR = TIM_PSCReloadMode_Immediate)
+#define TIM_ENABLE_IT_UPDATE(TIMx) (TIMx->DIER |= TIM_IT_Update)
+#define TIM_DISABLE_IT_UPDATE(TIMx) (TIMx->DIER &= (uint16_t)~TIM_IT_Update)
 
 typedef struct _Bit_Typedef {
 	uint8_t bit0 :1;
@@ -55,4 +62,4 @@ typedef enum _Status_Typedef {
 	Status_Ok, Status_Error, Status_TimeOut
 } Status_Typedef;
 
-#endif /* TYPEDEF_H_ */
+#endif /* U_TYPEDEF_H_ */

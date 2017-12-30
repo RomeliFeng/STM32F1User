@@ -1,29 +1,26 @@
 /*
- * StepMotorAccDecUnit.cpp
+ * U_StepMotorAccDecUnit.cpp
  *
  *  Created on: 2017年11月7日
  *      Author: Romeli
  */
 
-#include <Device/StepMotorAccDecUnit.h>
+#include <Device/U_StepMotorAccDecUnit.h>
 
-namespace User {
-namespace Device {
-
-StepMotorAccDecUnit* StepMotorAccDecUnit::_Pool[4];
-uint8_t StepMotorAccDecUnit::_PoolSp = 0;
+U_StepMotorAccDecUnit* U_StepMotorAccDecUnit::_Pool[4];
+uint8_t U_StepMotorAccDecUnit::_PoolSp = 0;
 
 /*
  * author Romeli
  * explain 把自身加入资源池，并且初始化变量
  * return com
  */
-StepMotorAccDecUnit::StepMotorAccDecUnit() {
+U_StepMotorAccDecUnit::U_StepMotorAccDecUnit(TIM_TypeDef* TIMx) {
+	_TIMx = TIMx;
 	//自动将对象指针加入资源池
 	_Pool[_PoolSp++] = this;
 
 	/* Do not care what their value */
-	_TIMx = 0;
 	_StepMotor = 0;
 	_Mode = StepMotorAccDecUnitMode_Accel;
 	_MaxSpeed = 10000;
@@ -33,24 +30,8 @@ StepMotorAccDecUnit::StepMotorAccDecUnit() {
 	_Done = false;
 }
 
-StepMotorAccDecUnit::~StepMotorAccDecUnit() {
+U_StepMotorAccDecUnit::~U_StepMotorAccDecUnit() {
 	// TODO Auto-generated destructor stub
-}
-
-/*
- * author Romeli
- * explain 初始化所有速度计算单元
- * return void
- */
-void StepMotorAccDecUnit::InitAll() {
-	//初始化池内所有单元
-	for (uint8_t i = 0; i < _PoolSp; ++i) {
-		_Pool[i]->Init();
-	}
-	if (_PoolSp == 0) {
-		//Error @Romeli 无速度计算单元（无法进行运动）
-		DebugOut("There have no speed control unit exsit");
-	}
 }
 
 /*
@@ -58,8 +39,7 @@ void StepMotorAccDecUnit::InitAll() {
  * explain 初始化速度计算单元（此函数应在派生类的对象中重写）
  * return void
  */
-void StepMotorAccDecUnit::Init() {
-	_TIMx = TIM7;
+void U_StepMotorAccDecUnit::Init() {
 	_StepMotor = 0;
 	_Busy = false;
 	_Done = false;
@@ -69,12 +49,29 @@ void StepMotorAccDecUnit::Init() {
 
 /*
  * author Romeli
+ * explain 初始化所有速度计算单元
+ * return void
+ */
+void U_StepMotorAccDecUnit::InitAll() {
+	//初始化池内所有单元
+	for (uint8_t i = 0; i < _PoolSp; ++i) {
+		_Pool[i]->Init();
+	}
+	if (_PoolSp == 0) {
+		//Error @Romeli 无速度计算单元（无法进行运动）
+		U_DebugOut("There have no speed control unit exsit");
+	}
+}
+
+/*
+ * author Romeli
  * explain 从速度计算单元池中提取一个可用单元
  * return SMSCUnit* 可用单元的指针
  */
-StepMotorAccDecUnit* StepMotorAccDecUnit::GetFreeUnit(StepMotor* stepMotor) {
+U_StepMotorAccDecUnit* U_StepMotorAccDecUnit::GetFreeUnit(
+		U_StepMotor* stepMotor) {
 	//遍历池内所有单元
-	StepMotorAccDecUnit* unit;
+	U_StepMotorAccDecUnit* unit;
 	for (uint8_t i = 0; i < _PoolSp; ++i) {
 		unit = _Pool[i];
 		if (!unit->_Busy) {
@@ -84,7 +81,7 @@ StepMotorAccDecUnit* StepMotorAccDecUnit::GetFreeUnit(StepMotor* stepMotor) {
 		} else {
 			if (!unit->_StepMotor->_Busy) {
 				//Error @Romeli 释放了一个被锁定的速度控制单元（待验证）
-				DebugOut("There have no speed control unit exsit");
+				U_DebugOut("There have no speed control unit exsit");
 				//如果当前单元被占用，但是运动模块空闲，视为当前单元空闲，锁定当前单元供本次运动使用
 				unit->Free();
 				unit->Lock(stepMotor);
@@ -93,7 +90,7 @@ StepMotorAccDecUnit* StepMotorAccDecUnit::GetFreeUnit(StepMotor* stepMotor) {
 		}
 	}
 	//Error @Romeli 无可用的速度计算单元（超出最大同时运动轴数，应该避免）
-	DebugOut("There have no available speed control unit");
+	U_DebugOut("There have no available speed control unit");
 	return 0;
 }
 
@@ -102,8 +99,8 @@ StepMotorAccDecUnit* StepMotorAccDecUnit::GetFreeUnit(StepMotor* stepMotor) {
  * explain 释放当前速度计算单元
  * return void
  */
-void StepMotorAccDecUnit::Free(StepMotor* stepMotor) {
-	StepMotorAccDecUnit* unit;
+void U_StepMotorAccDecUnit::Free(U_StepMotor* stepMotor) {
+	U_StepMotorAccDecUnit* unit;
 	//释放当前运动模块所占用的加减速单元
 	for (uint8_t i = 0; i < _PoolSp; ++i) {
 		unit = _Pool[i];
@@ -118,7 +115,7 @@ void StepMotorAccDecUnit::Free(StepMotor* stepMotor) {
  * explain 解锁当前单元
  * return void
  */
-void StepMotorAccDecUnit::Free() {
+void U_StepMotorAccDecUnit::Free() {
 	//关闭当前单元
 	Stop();
 	//复位标志位，解锁当前单元
@@ -131,7 +128,7 @@ void StepMotorAccDecUnit::Free() {
  * param stepMotor 欲使用当前单元的运动模块
  * return void
  */
-void StepMotorAccDecUnit::Lock(StepMotor* stepMotor) {
+void U_StepMotorAccDecUnit::Lock(U_StepMotor* stepMotor) {
 	//存储当前单元的运动模块
 	_StepMotor = stepMotor;
 	//存储最大速度
@@ -151,7 +148,7 @@ void StepMotorAccDecUnit::Lock(StepMotor* stepMotor) {
  * param2 tgtSpeed 目标速度
  * return void
  */
-void StepMotorAccDecUnit::Start(StepMotorAccDecUnitMode_Typedef mode) {
+void U_StepMotorAccDecUnit::Start(StepMotorAccDecUnitMode_Typedef mode) {
 	//关闭可能存在的计算任务
 	Stop();
 	SetMode(mode);
@@ -179,7 +176,7 @@ void StepMotorAccDecUnit::Start(StepMotorAccDecUnitMode_Typedef mode) {
 
 	//开始速度计算
 	TIM_CLEAR_UPDATE_FLAG(_TIMx);
-	TIM_ENABLE_IT(_TIMx);
+	TIM_ENABLE_IT_UPDATE(_TIMx);
 	TIM_ENABLE(_TIMx);
 }
 
@@ -188,9 +185,9 @@ void StepMotorAccDecUnit::Start(StepMotorAccDecUnitMode_Typedef mode) {
  * explain 关闭当前速度计算单元
  * return void
  */
-void StepMotorAccDecUnit::Stop() {
+void U_StepMotorAccDecUnit::Stop() {
 	//关闭速度计算定时器
-	TIM_DISABLE_IT(_TIMx);
+	TIM_DISABLE_IT_UPDATE(_TIMx);
 	TIM_DISABLE(_TIMx);
 	//清除速度计算定时器中断标志
 }
@@ -200,7 +197,7 @@ void StepMotorAccDecUnit::Stop() {
  * explain 根据TIM寄存器计算当前速度
  * return uint16_t
  */
-uint16_t StepMotorAccDecUnit::GetCurSpeed() {
+uint16_t U_StepMotorAccDecUnit::GetCurSpeed() {
 	//读取当前速度
 	uint16_t speed = _Done ? _TIMx->ARR : _TIMx->CNT;
 	switch (_Mode) {
@@ -213,7 +210,7 @@ uint16_t StepMotorAccDecUnit::GetCurSpeed() {
 		break;
 	default:
 		//Error @Romeli 错误的状态，不应该发生（超出最大同时运动轴数，应该避免）
-		DebugOut("Status Error!");
+		U_DebugOut("Status Error!");
 		return STEP_MOTOR_MIN_SPEED;
 		break;
 	}
@@ -225,10 +222,10 @@ uint16_t StepMotorAccDecUnit::GetCurSpeed() {
  * param speed 速度
  * return void
  */
-void StepMotorAccDecUnit::SetCurSpeed(uint16_t speed) {
+void U_StepMotorAccDecUnit::SetCurSpeed(uint16_t speed) {
 	if (speed < 200) {
 		//Error @Romeli 速度小于最低速度
-		DebugOut("There have no available speed control unit");
+		U_DebugOut("There have no available speed control unit");
 		speed = 200;
 	}
 	_TIMx->CNT = speed;
@@ -239,7 +236,7 @@ void StepMotorAccDecUnit::SetCurSpeed(uint16_t speed) {
  * explain 速度计算单元更新速度用的中断服务子程序
  * return void
  */
-void StepMotorAccDecUnit::SMSpeedCtlIRQ() {
+void U_StepMotorAccDecUnit::IRQ() {
 	_Done = true;
 	_TIMx->CNT = _TIMx->ARR;
 	//停止
@@ -248,33 +245,11 @@ void StepMotorAccDecUnit::SMSpeedCtlIRQ() {
 
 /*
  * author Romeli
- * explain 初始化定时器设置（此函数应在派生类中重写）
- * return void
- */
-void StepMotorAccDecUnit::TIMInit() {
-	DebugOut("This function should be override");
-	/*	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
-
-	 RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE);
-
-	 TIM_DeInit(_TIMx);
-	 TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	 TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
-	 TIM_TimeBaseInitStructure.TIM_Prescaler = 0xffff;
-	 TIM_TimeBaseInitStructure.TIM_Period = 0xffff;
-	 TIM_TimeBaseInitStructure.TIM_RepetitionCounter = 0;
-	 TIM_TimeBaseInit(_TIMx, &TIM_TimeBaseInitStructure);
-
-	 TIM_ARRPreloadConfig(_TIMx, ENABLE);*/
-}
-
-/*
- * author Romeli
  * explain 初始化中断设置（此函数应在派生类中重写）
  * return void
  */
-void StepMotorAccDecUnit::ITInit() {
-	DebugOut("This function should be override");
+void U_StepMotorAccDecUnit::ITInit() {
+	U_DebugOut("This function should be override");
 	/*	NVIC_InitTypeDef NVIC_InitStructure;
 	 //设置中断
 	 NVIC_InitStructure.NVIC_IRQChannel = TIM7_IRQn;
@@ -286,6 +261,23 @@ void StepMotorAccDecUnit::ITInit() {
 	 NVIC_Init(&NVIC_InitStructure);*/
 }
 
-} /* namespace Device */
-} /* namespace User */
+/*
+ * author Romeli
+ * explain 初始化定时器设置（此函数应在派生类中重写）
+ * return void
+ */
+void U_StepMotorAccDecUnit::TIMInit() {
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 
+	TIMRCCInit();
+
+	TIM_DeInit(_TIMx);
+	TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimeBaseInitStructure.TIM_Prescaler = 0xffff;
+	TIM_TimeBaseInitStructure.TIM_Period = 0xffff;
+	TIM_TimeBaseInitStructure.TIM_RepetitionCounter = 0;
+	TIM_TimeBaseInit(_TIMx, &TIM_TimeBaseInitStructure);
+
+	TIM_ARRPreloadConfig(_TIMx, ENABLE);
+}

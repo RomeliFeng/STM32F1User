@@ -1,5 +1,5 @@
 /*
- * StepMotor.h
+ * U_StepMotor.h
  *
  *  Created on: 2017年11月6日
  *      Author: Romeli
@@ -8,21 +8,12 @@
 #ifndef STEPMOTOR_H_
 #define STEPMOTOR_H_
 
+#include <U_Debug.h>
+#include <U_Typedef.h>
 #include "cmsis_device.h"
-#include "Debug.h"
 #include "ITPriority.h"
-#include "Typedef.h"
-
-namespace User {
-namespace Device {
 
 #define STEP_MOTOR_MIN_SPEED 200
-#define TIM_ENABLE(TIMx) (TIMx->CR1 |= TIM_CR1_CEN)
-#define TIM_DISABLE(TIMx) (TIMx->CR1 &= (uint16_t) (~((uint16_t) TIM_CR1_CEN)))
-#define TIM_CLEAR_UPDATE_FLAG(TIMx) (TIMx->SR = (uint16_t) ~TIM_IT_Update)
-#define TIM_PSC_RELOAD(TIMx) (TIMx->EGR = TIM_PSCReloadMode_Immediate)
-#define TIM_ENABLE_IT(TIMx) (TIMx->DIER |= TIM_IT_Update)
-#define TIM_DISABLE_IT(TIMx) (TIMx->DIER &= (uint16_t)~TIM_IT_Update)
 
 typedef enum {
 	StepMotorStatus_Stop,
@@ -31,30 +22,37 @@ typedef enum {
 	StepMotorStatus_Decel
 } StepMotorStatus_Typedef;
 
-typedef enum {
-	StepMotorDir_CW, StepMotorDir_CCW
+typedef enum
+	:uint8_t {
+		StepMotorDir_CW, StepMotorDir_CCW
 } StepMotorDir_Typedef;
 
-class StepMotorAccDecUnit;
+class U_StepMotorAccDecUnit;
 
-class StepMotor {
+class U_StepMotor {
 public:
-	friend class StepMotorAccDecUnit;
+	friend class U_StepMotorAccDecUnit;
 
-	StepMotor();
-	virtual ~StepMotor();
+	U_StepMotor(TIM_TypeDef* TIMx, uint8_t TIMx_CCR_Ch);
+	virtual ~U_StepMotor();
+
+	void Init();
 
 	static void InitAll();
-
-	virtual void Init() = 0;
 
 	bool IsBusy() {
 		return _Busy;
 	}
 	//设置保护限位
-	void SetLimit(uint8_t cwLimit, uint8_t ccwLimit) {
+	inline void SetCWLimit(uint8_t cwLimit) {
 		_CWLimit = cwLimit;
+	}
+	inline void SetCCWLimit(uint8_t ccwLimit) {
 		_CCWLimit = ccwLimit;
+	}
+	inline void SetLimit(uint8_t cwLimit, uint8_t ccwLimit) {
+		SetCWLimit(cwLimit);
+		SetCCWLimit(ccwLimit);
 	}
 	//设置默认电机方向
 	void SetRelativeDir(StepMotorDir_Typedef dir) {
@@ -68,6 +66,9 @@ public:
 	}
 	inline uint32_t GetCurStep() {
 		return _CurStep;
+	}
+	inline uint32_t GetTgtStep() {
+		return _TgtStep;
 	}
 	//根据步数进行移动
 	Status_Typedef Move(uint32_t step, StepMotorDir_Typedef dir);
@@ -84,26 +85,27 @@ public:
 	inline void Unlock() {
 		SetEnPin(DISABLE);
 	}
+	//保护检测
+	void SafetyProtect(uint8_t limit);
 
-	void PulIRQ();
+	void IRQ();
 protected:
 	TIM_TypeDef* _TIMx;	//脉冲发生用定时器
+	uint8_t _TIMx_CCR_Ch;
 	volatile uint16_t* _TIMx_CCRx; //脉冲发生定时器的输出通道
 	uint32_t _TIMy_FRQ;	//脉冲发生定时器的频率，由系统主频/分频数算的
 
 	virtual void GPIOInit() = 0;
-	virtual void TIMInit() = 0;
+	virtual void TIMRCCInit() = 0;
 	virtual void ITInit() = 0;
 
 	virtual void SetDirPin(FunctionalState newState) = 0;
 	virtual void SetEnPin(FunctionalState newState) = 0;
-//保护检测
-	virtual bool SafetyCheck();
 private:
-	static StepMotor* _Pool[];
+	static U_StepMotor* _Pool[];
 	static uint8_t _PoolSp;
 
-	StepMotorAccDecUnit* _AccDecUnit;	//速度计算单元
+	U_StepMotorAccDecUnit* _AccDecUnit;	//速度计算单元
 
 	volatile uint32_t _CurStep;	//当前已移动步数
 	volatile uint32_t _TgtStep;	//目标步数
@@ -117,19 +119,18 @@ private:
 	uint8_t _CCWLimit; //反转保护限位
 
 	StepMotorDir_Typedef _RelativeDir; //实际方向对应
-	StepMotorDir_Typedef _Dir; //当前方向
+	StepMotorDir_Typedef _CurDir; //当前方向
 
 	volatile StepMotorStatus_Typedef _Status;	//当前电机状态
 	volatile bool _StepLimit;	//是否由步数限制运动
 	volatile bool _Busy;	//当前电机繁忙?
+
+	void TIMInit();
 
 	void SetDir(StepMotorDir_Typedef dir);	//设置电机方向
 	void StartDec();
 	uint32_t GetDecelStep(uint16_t speedFrom);
 	void SetSpeed(uint16_t speed);
 };
-
-} /* namespace Device */
-} /* namespace User*/
 
 #endif /* STEPMOTOR_H_ */

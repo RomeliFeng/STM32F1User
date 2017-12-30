@@ -5,14 +5,12 @@
  *      Author: Romeli
  */
 
-#include <Debug.h>
-
-namespace User {
+#include <U_Debug.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
-void Debug::Print(uint8_t* file, uint32_t line, const char* message) {
+void U_Debug::Print(uint8_t* file, uint32_t line, const char* message) {
 #ifdef USER_DEBUG
 	trace_printf("U_assert() failed: file \"%s\", line %d, message \"%s\"",
 			file, line, message);
@@ -22,5 +20,4 @@ void Debug::Print(uint8_t* file, uint32_t line, const char* message) {
 
 #pragma GCC diagnostic pop
 
-} /* namespace User */
 
