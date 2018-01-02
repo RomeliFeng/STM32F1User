@@ -13,9 +13,10 @@
  * return uint16_t
  */
 uint16_t U_Steam::Available() {
-	return _RxBuf.front <= _RxBuf.tail ?
+	return uint16_t(
+			_RxBuf.front <= _RxBuf.tail ?
 			_RxBuf.tail - _RxBuf.front :
-			_RxBuf.size - _RxBuf.front + _RxBuf.tail;
+					_RxBuf.size - _RxBuf.front + _RxBuf.tail);
 }
 
 /*
@@ -140,7 +141,7 @@ Status_Typedef U_Steam::NextInt(void *num, uint8_t ignore) {
 	bool firstChar = true;
 	bool isNeg = false;
 	uint8_t c = 0;
-	uint8_t sp = _RxBuf.front;
+	uint16_t sp = _RxBuf.front;
 	int32_t n = 0;
 
 	while (Available() > 0) {
@@ -194,7 +195,7 @@ Status_Typedef U_Steam::NextFloat(void* flo, uint8_t ignore) {
 	bool isNeg = false;
 	bool isFra = false;
 	bool firstChar = true;
-	uint8_t sp = _RxBuf.front;
+	uint16_t sp = _RxBuf.front;
 	uint8_t c = 0;
 
 	while (Available() > 0) {
@@ -273,7 +274,7 @@ Status_Typedef U_Steam::SpInc(DataSteam_Typedef *steam) {
 		return Status_Error;
 	} else {
 		//缓冲区指针+1
-		steam->front = (steam->front + 1) % steam->size;
+		steam->front = uint16_t((steam->front + 1) % steam->size);
 		return Status_Ok;
 	}
 }
@@ -285,7 +286,7 @@ Status_Typedef U_Steam::SpInc(DataSteam_Typedef *steam) {
  * return Status_Typedef
  */
 Status_Typedef U_Steam::SpDec(DataSteam_Typedef* steam) {
-	steam->front = steam->front == 0 ? steam->size : steam->front - 1;
+	steam->front = uint16_t(steam->front == 0 ? steam->size : steam->front - 1);
 	return Status_Ok;
 }
 

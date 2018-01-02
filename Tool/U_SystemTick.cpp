@@ -68,6 +68,9 @@ void U_SystemTick::IRQ() {
 	_Now += _Interval;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-declarations"
 extern "C" void SysTick_Handler() {
 	U_SystemTick::IRQ();
 }
+#pragma GCC diagnostic pop

@@ -54,12 +54,12 @@ void U_Encoder::InitAll() {
 
 void U_Encoder::Set(int32_t pos) {
 	if (pos >= 0) {
-		_ExCNT = pos / 0x10000;
-		_TIMx->CNT = pos - (_ExCNT * 0x10000);
+		_ExCNT = uint16_t(pos / 0x10000);
+		_TIMx->CNT = uint16_t(pos - (_ExCNT * 0x10000));
 	} else {
 		pos = -pos;
-		_ExCNT = pos / 0x10000 + 1;
-		_TIMx->CNT = (_ExCNT * 0x10000) - pos;
+		_ExCNT = uint16_t(pos / 0x10000 + 1);
+		_TIMx->CNT = uint16_t((_ExCNT * 0x10000) - pos);
 	}
 }
 
