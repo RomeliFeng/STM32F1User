@@ -163,7 +163,7 @@ Status_Typedef U_USART::IRQUSART() {
 			//关闭DMA接收
 			_DMAy_Channelx_Rx->CCR &= (uint16_t) (~DMA_CCR1_EN);
 
-			uint16_t len = _RxBuf.size - _DMAy_Channelx_Rx->CNDTR;
+			uint16_t len = uint16_t(_RxBuf.size - _DMAy_Channelx_Rx->CNDTR);
 			//清除DMA标志
 //			_DMAx->IFCR = DMA1_FLAG_GL3 | DMA1_FLAG_TC3 | DMA1_FLAG_TE3
 //					| DMA1_FLAG_HT3;
@@ -172,7 +172,7 @@ Status_Typedef U_USART::IRQUSART() {
 			//循环搬运数据
 			for (uint16_t i = 0; i < len; ++i) {
 				_RxBuf.data[_RxBuf.tail] = _DMARxBuf.data[i];
-				_RxBuf.tail = (_RxBuf.tail + 1) % _RxBuf.size;
+				_RxBuf.tail = uint16_t((_RxBuf.tail + 1) % _RxBuf.size);
 			}
 			//开启DMA接收
 			_DMAy_Channelx_Rx->CCR |= DMA_CCR1_EN;
@@ -188,8 +188,8 @@ Status_Typedef U_USART::IRQUSART() {
 	//串口字节接收中断置位
 	if ((_USARTx->SR & USART_FLAG_RXNE) != 0) {
 		//搬运数据到缓冲区
-		_RxBuf.data[_RxBuf.tail] = _USARTx->DR;
-		_RxBuf.tail = (_RxBuf.tail + 1) % _RxBuf.size;
+		_RxBuf.data[_RxBuf.tail] = uint8_t(_USARTx->DR);
+		_RxBuf.tail = uint16_t((_RxBuf.tail + 1) % _RxBuf.size);
 	}
 #endif
 	//串口帧错误中断
@@ -431,10 +431,10 @@ Status_Typedef U_USART::DMASend(DataSteam_Typedef * steam,
 		//置位忙标志，防止计算中DMA自动加载发送缓冲
 		txBuf->busy = true;
 		//计算缓冲区空闲空间大小
-		avaSize = txBuf->size - txBuf->tail;
+		avaSize = uint16_t(txBuf->size - txBuf->tail);
 		//根据空闲空间大小计算搬移结束位置
 		if (steam->tail > avaSize) {
-			end = steam->tail - avaSize;
+			end = uint16_t(steam->tail - avaSize);
 		} else {
 			end = 0;
 		}

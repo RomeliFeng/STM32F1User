@@ -11,7 +11,6 @@
 #include <U_Debug.h>
 #include <U_Typedef.h>
 #include "cmsis_device.h"
-#include "ITPriority.h"
 #include "U_StepMotor.h"
 
 typedef enum {

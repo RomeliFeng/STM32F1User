@@ -12,7 +12,6 @@
 #include <Communication/U_Steam.h>
 #include <U_Debug.h>
 #include "cmsis_device.h"
-#include "ITPriority.h"
 
 typedef enum {
 	USARTMode_Normal, USARTMode_DMA
