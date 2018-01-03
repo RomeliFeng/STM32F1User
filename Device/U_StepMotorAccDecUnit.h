@@ -13,16 +13,16 @@
 #include "cmsis_device.h"
 #include "U_StepMotor.h"
 
-typedef enum {
-	StepMotorAccDecUnitMode_Accel, StepMotorAccDecUnitMode_Decel
-} StepMotorAccDecUnitMode_Typedef;
-
 /*
  * author Romeli
  * ps 提取对象时线程不安全，确保提取操作只在主线程中进行
  */
 class U_StepMotorAccDecUnit {
 public:
+	enum Mode_Typedef {
+		Mode_Accel, Mode_Decel
+	};
+
 	//构造函数
 	U_StepMotorAccDecUnit(TIM_TypeDef* TIMx);
 	virtual ~U_StepMotorAccDecUnit();
@@ -35,7 +35,7 @@ public:
 	static void Free(U_StepMotor* stepMotor);
 	void Free();
 	void Lock(U_StepMotor* stepMotor);
-	void Start(StepMotorAccDecUnitMode_Typedef mode);
+	void Start(Mode_Typedef mode);
 	void Stop();
 
 	//内联函数
@@ -45,7 +45,7 @@ public:
 	inline bool IsDone() {
 		return _Done;
 	}
-	inline void SetMode(StepMotorAccDecUnitMode_Typedef mode) {
+	inline void SetMode(Mode_Typedef mode) {
 		_Mode = mode;
 	}
 
@@ -64,7 +64,7 @@ private:
 	static U_StepMotorAccDecUnit* _Pool[];
 	static uint8_t _PoolSp;
 
-	StepMotorAccDecUnitMode_Typedef _Mode;
+	Mode_Typedef _Mode;
 	uint16_t _MaxSpeed;
 	uint32_t _Accel;
 	uint32_t _Decel;

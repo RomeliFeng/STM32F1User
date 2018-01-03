@@ -22,7 +22,7 @@ U_StepMotorAccDecUnit::U_StepMotorAccDecUnit(TIM_TypeDef* TIMx) {
 
 	/* Do not care what their value */
 	_StepMotor = 0;
-	_Mode = StepMotorAccDecUnitMode_Accel;
+	_Mode = Mode_Accel;
 	_MaxSpeed = 10000;
 	_Accel = 20000;
 	_Decel = 20000;
@@ -148,7 +148,7 @@ void U_StepMotorAccDecUnit::Lock(U_StepMotor* stepMotor) {
  * param2 tgtSpeed 目标速度
  * return void
  */
-void U_StepMotorAccDecUnit::Start(StepMotorAccDecUnitMode_Typedef mode) {
+void U_StepMotorAccDecUnit::Start(Mode_Typedef mode) {
 	//关闭可能存在的计算任务
 	Stop();
 	SetMode(mode);
@@ -156,12 +156,12 @@ void U_StepMotorAccDecUnit::Start(StepMotorAccDecUnitMode_Typedef mode) {
 
 	uint16_t initSpeed = STEP_MOTOR_MIN_SPEED;
 	switch (_Mode) {
-	case StepMotorAccDecUnitMode_Accel:
+	case Mode_Accel:
 		_TIMx->PSC = (uint16_t) (SystemCoreClock / _Accel);
 		_TIMx->ARR = _MaxSpeed;
 		initSpeed = STEP_MOTOR_MIN_SPEED;
 		break;
-	case StepMotorAccDecUnitMode_Decel: {
+	case Mode_Decel: {
 		uint16_t speed = _TIMx->CNT;
 		_TIMx->PSC = (uint16_t) (SystemCoreClock / _Decel);
 		_TIMx->ARR = (uint16_t) (_MaxSpeed - STEP_MOTOR_MIN_SPEED);
@@ -201,10 +201,10 @@ uint16_t U_StepMotorAccDecUnit::GetCurSpeed() {
 	//读取当前速度
 	uint16_t speed = _Done ? _TIMx->ARR : _TIMx->CNT;
 	switch (_Mode) {
-	case StepMotorAccDecUnitMode_Accel:
+	case Mode_Accel:
 		return speed;
 		break;
-	case StepMotorAccDecUnitMode_Decel:
+	case Mode_Decel:
 		//计算当前速度（部分定时器没有向下计数）
 		return (uint16_t) (_MaxSpeed - speed);
 		break;

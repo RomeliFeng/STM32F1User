@@ -51,10 +51,10 @@ U_StepMotor::U_StepMotor(TIM_TypeDef* TIMx, uint8_t TIMx_CCR_Ch) {
 	_CWLimit = 0; //正转保护限位
 	_CCWLimit = 0; //反转保护限位
 
-	_RelativeDir = StepMotorDir_CW; //实际方向对应
-	_CurDir = StepMotorDir_CW; //当前方向
+	_RelativeDir = Dir_CW; //实际方向对应
+	_CurDir = Dir_CW; //当前方向
 
-	_Status = StepMotorStatus_Stop;
+	_Flow = Flow_Stop;
 	_StepLimit = true;
 	_Busy = false;	//当前电机繁忙?
 }
@@ -95,7 +95,7 @@ void U_StepMotor::InitAll() {
  * param2 dir 运动方向
  * return void
  */
-Status_Typedef U_StepMotor::Move(uint32_t step, StepMotorDir_Typedef dir) {
+Status_Typedef U_StepMotor::Move(uint32_t step, Dir_Typedef dir) {
 	//停止如果有的运动
 	Stop();
 	//锁定当前运动
@@ -139,12 +139,12 @@ Status_Typedef U_StepMotor::Move(uint32_t step, StepMotorDir_Typedef dir) {
 	SetDir(dir);
 
 	//切换步进电机状态为加速
-	_Status = StepMotorStatus_Accel;
-	_AccDecUnit->SetMode(StepMotorAccDecUnitMode_Accel);
+	_Flow = Flow_Accel;
+	_AccDecUnit->SetMode(U_StepMotorAccDecUnit::Mode_Accel);
 
 	if (_Accel != 0) {
 		//开始加速 目标速度为最大速度
-		_AccDecUnit->Start(StepMotorAccDecUnitMode_Accel);
+		_AccDecUnit->Start(U_StepMotorAccDecUnit::Mode_Accel);
 	} else {
 		_AccDecUnit->SetCurSpeed(_MaxSpeed);
 	}
@@ -194,12 +194,12 @@ void U_StepMotor::StopSlow() {
  */
 void U_StepMotor::SafetyProtect(uint8_t limit) {
 	switch (_CurDir) {
-	case StepMotorDir_CW:
+	case Dir_CW:
 		if ((limit & _CWLimit) != 0) {
 			Stop();
 		}
 		break;
-	case StepMotorDir_CCW:
+	case Dir_CCW:
 		if ((limit & _CCWLimit) != 0) {
 			Stop();
 		}
@@ -218,43 +218,43 @@ void U_StepMotor::IRQ() {
 	_CurStep++;
 	//处于步数限制运动中 并且 到达指定步数，停止运动
 
-	switch (_Status) {
-	case StepMotorStatus_Accel:
+	switch (_Flow) {
+	case Flow_Accel:
 		//_DecelStartStep = 0 时为持续运动模式
 		if (_DecelStartStep != 0) {
 			//当减速流程存在
 			if (_CurStep >= _DecelStartStep) {
 				//到达减速步数，进入减速流程
 				StartDec();
-				_Status = StepMotorStatus_Decel;
+				_Flow = Flow_Decel;
 			}
 		} else if (_StepLimit && (_CurStep == _TgtStep)) {
 			//当减速流程不存在时，有可能在加速中进入停止流程
-			_Status = StepMotorStatus_Stop;
+			_Flow = Flow_Stop;
 			Stop();
 		}
 		if (_AccDecUnit->IsDone()) {
 			//到达最高步数，开始匀速流程
-			_Status = StepMotorStatus_Run;
+			_Flow = Flow_Run;
 		}
 		SetSpeed(_AccDecUnit->GetCurSpeed());
 		break;
-	case StepMotorStatus_Run:
+	case Flow_Run:
 		if (_CurStep >= _DecelStartStep) {
 			//到达减速步数，进入减速流程
 			StartDec();
-			_Status = StepMotorStatus_Decel;
+			_Flow = Flow_Decel;
 		} else if (_StepLimit && (_CurStep == _TgtStep)) {
 			//当减速流程不存在时，有可能在运行中中进入停止流程
-			_Status = StepMotorStatus_Stop;
+			_Flow = Flow_Stop;
 			Stop();
 		}
 		break;
-	case StepMotorStatus_Decel:
+	case Flow_Decel:
 		SetSpeed(_AccDecUnit->GetCurSpeed());
 		if (_CurStep == _TgtStep) {
 			//当减速流程时，有可能进入停止流程
-			_Status = StepMotorStatus_Stop;
+			_Flow = Flow_Stop;
 			Stop();
 		}
 		break;
@@ -408,7 +408,7 @@ void U_StepMotor::TIMInit() {
  * param dir 欲改变的方向
  * return void
  */
-void U_StepMotor::SetDir(StepMotorDir_Typedef dir) {
+void U_StepMotor::SetDir(Dir_Typedef dir) {
 	_CurDir = dir;
 	if (_CurDir == _RelativeDir) {
 		SetDirPin(ENABLE);
@@ -424,7 +424,7 @@ void U_StepMotor::SetDir(StepMotorDir_Typedef dir) {
  */
 void U_StepMotor::StartDec() {	//关闭速度计算单元
 //开始减速计算
-	_AccDecUnit->Start(StepMotorAccDecUnitMode_Decel);
+	_AccDecUnit->Start(U_StepMotorAccDecUnit::Mode_Decel);
 }
 
 /*

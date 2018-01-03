@@ -14,23 +14,21 @@
 
 #define STEP_MOTOR_MIN_SPEED 200
 
-typedef enum {
-	StepMotorStatus_Stop,
-	StepMotorStatus_Accel,
-	StepMotorStatus_Run,
-	StepMotorStatus_Decel
-} StepMotorStatus_Typedef;
-
-typedef enum
-	:uint8_t {
-		StepMotorDir_CW, StepMotorDir_CCW
-} StepMotorDir_Typedef;
-
 class U_StepMotorAccDecUnit;
 
 class U_StepMotor {
 public:
 	friend class U_StepMotorAccDecUnit;
+
+	enum Flow_Typedef
+		:uint8_t {
+			Flow_Stop, Flow_Accel, Flow_Run, Flow_Decel
+	};
+
+	enum Dir_Typedef
+		:uint8_t {
+			Dir_CW, Dir_CCW
+	};
 
 	U_StepMotor(TIM_TypeDef* TIMx, uint8_t TIMx_CCR_Ch);
 	virtual ~U_StepMotor();
@@ -54,7 +52,7 @@ public:
 		SetCCWLimit(ccwLimit);
 	}
 	//设置默认电机方向
-	void SetRelativeDir(StepMotorDir_Typedef dir) {
+	void SetRelativeDir(Dir_Typedef dir) {
 		_RelativeDir = dir;
 	}
 	//设置速度和加速度
@@ -70,9 +68,9 @@ public:
 		return _TgtStep;
 	}
 	//根据步数进行移动
-	Status_Typedef Move(uint32_t step, StepMotorDir_Typedef dir);
+	Status_Typedef Move(uint32_t step, Dir_Typedef dir);
 	//持续移动
-	inline Status_Typedef Run(StepMotorDir_Typedef dir) {
+	inline Status_Typedef Run(Dir_Typedef dir) {
 		return Move(0, dir);
 	}
 	//停止移动
@@ -117,16 +115,16 @@ private:
 	uint8_t _CWLimit; //正转保护限位
 	uint8_t _CCWLimit; //反转保护限位
 
-	StepMotorDir_Typedef _RelativeDir; //实际方向对应
-	StepMotorDir_Typedef _CurDir; //当前方向
+	Dir_Typedef _RelativeDir; //实际方向对应
+	Dir_Typedef _CurDir; //当前方向
 
-	volatile StepMotorStatus_Typedef _Status;	//当前电机状态
+	volatile Flow_Typedef _Flow;	//当前电机状态
 	volatile bool _StepLimit;	//是否由步数限制运动
 	volatile bool _Busy;	//当前电机繁忙?
 
 	void TIMInit();
 
-	void SetDir(StepMotorDir_Typedef dir);	//设置电机方向
+	void SetDir(Dir_Typedef dir);	//设置电机方向
 	void StartDec();
 	uint32_t GetDecelStep(uint16_t speedFrom);
 	void SetSpeed(uint16_t speed);
