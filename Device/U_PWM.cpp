@@ -7,14 +7,89 @@
 
 #include <Device/U_PWM.h>
 
+U_PWM* U_PWM::_Pool[4];
+uint8_t U_PWM::_PoolSp = 0;
+
 U_PWM::U_PWM(TIM_TypeDef* TIMx) {
+	_TIMx = TIMx;
+	_OutputCh = 0;
+
+	//自动将对象指针加入资源池
+	_Pool[_PoolSp++] = this;
 }
 
 U_PWM::~U_PWM() {
 }
 
-void U_PWM::InitAll() {
+void U_PWM::InitAll(uint16_t period, uint16_t pulse,
+		uint8_t OutputCh) {
+	//初始化池内所有单元
+	for (uint8_t i = 0; i < _PoolSp; ++i) {
+		_Pool[i]->Init(period, pulse, OutputCh);
+	}
+	if (_PoolSp == 0) {
+		//Error @Romeli 无PWM模块
+		U_DebugOut("There have pwm module exsit");
+	}
 }
 
-void U_PWM::Init() {
+void U_PWM::Init(uint16_t period, uint16_t pulse, uint8_t OutputCh) {
+	_OutputCh = OutputCh;
+	GPIOInit();
+	TIMInit(period, pulse);
+	ITInit();
+}
+
+void U_PWM::Enable() {
+	TIM_Enable(_TIMx);
+}
+
+void U_PWM::Disable() {
+	TIM_Disable(_TIMx);
+}
+
+void U_PWM::TIMInit(uint16_t period, uint16_t pulse) {
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
+	TIM_OCInitTypeDef TIM_OCInitStructure;
+
+	TIM_DeInit(_TIMx);
+	TIM_TimeBaseStructInit(&TIM_TimeBaseInitStructure);
+	TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInitStructure.TIM_Prescaler = 0;
+	TIM_TimeBaseInitStructure.TIM_Period = period;
+	TIM_TimeBaseInitStructure.TIM_RepetitionCounter = 0;
+	TIM_TimeBaseInit(_TIMx, &TIM_TimeBaseInitStructure);
+
+	TIM_OCStructInit(&TIM_OCInitStructure);
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_Pulse = pulse;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+	TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Reset;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+
+	if (_OutputCh >= 0x0f) {
+		//Error @Romeli PWM通道错误
+		U_DebugOut("Please check the channel. It looks illegal");
+	}
+
+	if ((_OutputCh & OutputCh_1) != 0) {
+		TIM_OC1Init(_TIMx, &TIM_OCInitStructure);
+		TIM_OC1PreloadConfig(_TIMx, TIM_OCPreload_Enable);
+	}
+	if ((_OutputCh & OutputCh_2) != 0) {
+		TIM_OC2Init(_TIMx, &TIM_OCInitStructure);
+		TIM_OC2PreloadConfig(_TIMx, TIM_OCPreload_Enable);
+	}
+	if ((_OutputCh & OutputCh_3) != 0) {
+		TIM_OC3Init(_TIMx, &TIM_OCInitStructure);
+		TIM_OC3PreloadConfig(_TIMx, TIM_OCPreload_Enable);
+	}
+	if ((_OutputCh & OutputCh_4) != 0) {
+		TIM_OC4Init(_TIMx, &TIM_OCInitStructure);
+		TIM_OC4PreloadConfig(_TIMx, TIM_OCPreload_Enable);
+	}
+}
+
+void U_PWM::ITInit() {
 }
