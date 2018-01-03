@@ -31,9 +31,9 @@ void U_Encoder::Init() {
 	TIMInit();
 	ITInit();
 	//顺序很重要
-	TIM_CLEAR_UPDATE_FLAG(_TIMx);
-	TIM_ENABLE_IT_UPDATE(_TIMx);
-	TIM_ENABLE(_TIMx);
+	TIM_Clear_Update_Flag(_TIMx);
+	TIM_Enable_IT_Update(_TIMx);
+	TIM_Enable(_TIMx);
 }
 
 /*
@@ -73,7 +73,7 @@ void U_Encoder::IRQ() {
 	} else {
 		--_ExCNT;
 	}
-	TIM_CLEAR_UPDATE_FLAG(_TIMx);
+	TIM_Clear_Update_Flag(_TIMx);
 }
 
 void U_Encoder::GPIOInit() {

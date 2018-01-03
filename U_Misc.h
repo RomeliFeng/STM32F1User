@@ -1,21 +1,39 @@
 /*
-* Typedef.h
+ * U_Misc.h
  *
  *  Created on: 2017��1��8��
  *      Author: Romeli
  */
 
-#ifndef U_TYPEDEF_H_
-#define U_TYPEDEF_H_
+#ifndef U_MISC_H_
+#define U_MISC_H_
 
 #include "cmsis_device.h"
 
-#define TIM_ENABLE(TIMx) (TIMx->CR1 |= TIM_CR1_CEN)
-#define TIM_DISABLE(TIMx) (TIMx->CR1 &= (uint16_t) (~((uint16_t) TIM_CR1_CEN)))
-#define TIM_CLEAR_UPDATE_FLAG(TIMx) (TIMx->SR = (uint16_t) ~TIM_IT_Update)
-#define TIM_PSC_RELOAD(TIMx) (TIMx->EGR = TIM_PSCReloadMode_Immediate)
-#define TIM_ENABLE_IT_UPDATE(TIMx) (TIMx->DIER |= TIM_IT_Update)
-#define TIM_DISABLE_IT_UPDATE(TIMx) (TIMx->DIER &= (uint16_t)~TIM_IT_Update)
+//these function are work for high speed setting
+inline void TIM_Enable(TIM_TypeDef* TIMx) {
+	TIMx->CR1 |= TIM_CR1_CEN;
+}
+
+inline void TIM_Disable(TIM_TypeDef* TIMx) {
+	TIMx->CR1 &= (uint16_t) (~((uint16_t) TIM_CR1_CEN));
+}
+
+inline void TIM_Clear_Update_Flag(TIM_TypeDef* TIMx) {
+	TIMx->SR = (uint16_t) ~TIM_IT_Update;
+}
+
+inline void TIM_PSC_Reload(TIM_TypeDef* TIMx) {
+	TIMx->EGR = TIM_PSCReloadMode_Immediate;
+}
+
+inline void TIM_Enable_IT_Update(TIM_TypeDef* TIMx) {
+	TIMx->DIER |= TIM_IT_Update;
+}
+
+inline void TIM_Disable_IT_Update(TIM_TypeDef* TIMx) {
+	TIMx->DIER &= (uint16_t) ~TIM_IT_Update;
+}
 
 typedef struct _Bit_Typedef {
 	uint8_t bit0 :1;
@@ -62,4 +80,4 @@ typedef enum _Status_Typedef {
 	Status_Ok, Status_Error, Status_TimeOut
 } Status_Typedef;
 
-#endif /* U_TYPEDEF_H_ */
+#endif /* U_MISC_H_ */

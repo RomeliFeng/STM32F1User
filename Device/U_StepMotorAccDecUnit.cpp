@@ -171,13 +171,13 @@ void U_StepMotorAccDecUnit::Start(StepMotorAccDecUnitMode_Typedef mode) {
 	default:
 		break;
 	}
-	TIM_PSC_RELOAD(_TIMx);	//更新时会清空CNT，需要注意
+	TIM_PSC_Reload(_TIMx);	//更新时会清空CNT，需要注意
 	_TIMx->CNT = initSpeed;
 
 	//开始速度计算
-	TIM_CLEAR_UPDATE_FLAG(_TIMx);
-	TIM_ENABLE_IT_UPDATE(_TIMx);
-	TIM_ENABLE(_TIMx);
+	TIM_Clear_Update_Flag(_TIMx);
+	TIM_Enable_IT_Update(_TIMx);
+	TIM_Enable(_TIMx);
 }
 
 /*
@@ -187,8 +187,8 @@ void U_StepMotorAccDecUnit::Start(StepMotorAccDecUnitMode_Typedef mode) {
  */
 void U_StepMotorAccDecUnit::Stop() {
 	//关闭速度计算定时器
-	TIM_DISABLE_IT_UPDATE(_TIMx);
-	TIM_DISABLE(_TIMx);
+	TIM_Disable_IT_Update(_TIMx);
+	TIM_Disable(_TIMx);
 	//清除速度计算定时器中断标志
 }
 

@@ -151,11 +151,11 @@ Status_Typedef U_StepMotor::Move(uint32_t step, StepMotorDir_Typedef dir) {
 	//Warnning 需确保当前流程为加速
 	SetSpeed(_AccDecUnit->GetCurSpeed());
 
-	TIM_PSC_RELOAD(_TIMx);
+	TIM_PSC_Reload(_TIMx);
 	//开始输出脉冲
-	TIM_CLEAR_UPDATE_FLAG(_TIMx);
-	TIM_ENABLE_IT_UPDATE(_TIMx);
-	TIM_ENABLE(_TIMx);
+	TIM_Clear_Update_Flag(_TIMx);
+	TIM_Enable_IT_Update(_TIMx);
+	TIM_Enable(_TIMx);
 	return Status_Ok;
 }
 
@@ -166,8 +166,8 @@ Status_Typedef U_StepMotor::Move(uint32_t step, StepMotorDir_Typedef dir) {
  */
 void U_StepMotor::Stop() {
 	//关闭脉冲发生
-	TIM_DISABLE(_TIMx);
-	TIM_DISABLE_IT_UPDATE(_TIMx);
+	TIM_Disable(_TIMx);
+	TIM_Disable_IT_Update(_TIMx);
 	//尝试释放当前运动模块占用的单元
 	U_StepMotorAccDecUnit::Free(this);
 	//清空忙标志
@@ -263,7 +263,7 @@ void U_StepMotor::IRQ() {
 		U_DebugOut("Unkown error");
 		break;
 	}
-	TIM_CLEAR_UPDATE_FLAG(_TIMx);
+	TIM_Clear_Update_Flag(_TIMx);
 }
 
 /*

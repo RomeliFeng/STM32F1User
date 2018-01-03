@@ -9,7 +9,7 @@
 #define U_ENCODER_H_
 
 #include <U_Debug.h>
-#include <U_Typedef.h>
+#include <U_Misc.h>
 #include "cmsis_device.h"
 
 class U_Encoder {

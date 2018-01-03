@@ -10,7 +10,7 @@
 
 #include <Tool/U_Convert.h>
 #include <U_Debug.h>
-#include <U_Typedef.h>
+#include <U_Misc.h>
 #include "cmsis_device.h"
 
 typedef struct _DataSteam_Typedef {
