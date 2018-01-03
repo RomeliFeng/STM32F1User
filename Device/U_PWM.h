@@ -24,17 +24,17 @@ public:
 		OutputCh_All = 0x0f
 	};
 
-	U_PWM(TIM_TypeDef* TIMx);
+	U_PWM(TIM_TypeDef* TIMx, uint8_t OutputCh);
 	virtual ~U_PWM();
 
 	//初始化硬件
-	static void InitAll(uint16_t period, uint16_t pulse,
-			uint8_t OutputCh);
-	void Init(uint16_t period, uint16_t pulse, uint8_t OutputCh);
+	static void InitAll(uint16_t period, uint16_t pulse);
+	void Init(uint16_t period, uint16_t pulse);
 	void Enable();
 	void Disable();
 protected:
 	virtual void GPIOInit() = 0;
+	virtual void TIMRCCInit() = 0;
 	virtual void TIMInit(uint16_t period, uint16_t pulse);
 	virtual void ITInit();
 private:

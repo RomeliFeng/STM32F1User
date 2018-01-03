@@ -10,9 +10,9 @@
 U_PWM* U_PWM::_Pool[4];
 uint8_t U_PWM::_PoolSp = 0;
 
-U_PWM::U_PWM(TIM_TypeDef* TIMx) {
+U_PWM::U_PWM(TIM_TypeDef* TIMx, uint8_t OutputCh) {
 	_TIMx = TIMx;
-	_OutputCh = 0;
+	_OutputCh = OutputCh;
 
 	//自动将对象指针加入资源池
 	_Pool[_PoolSp++] = this;
@@ -21,11 +21,10 @@ U_PWM::U_PWM(TIM_TypeDef* TIMx) {
 U_PWM::~U_PWM() {
 }
 
-void U_PWM::InitAll(uint16_t period, uint16_t pulse,
-		uint8_t OutputCh) {
+void U_PWM::InitAll(uint16_t period, uint16_t pulse) {
 	//初始化池内所有单元
 	for (uint8_t i = 0; i < _PoolSp; ++i) {
-		_Pool[i]->Init(period, pulse, OutputCh);
+		_Pool[i]->Init(period, pulse);
 	}
 	if (_PoolSp == 0) {
 		//Error @Romeli 无PWM模块
@@ -33,8 +32,7 @@ void U_PWM::InitAll(uint16_t period, uint16_t pulse,
 	}
 }
 
-void U_PWM::Init(uint16_t period, uint16_t pulse, uint8_t OutputCh) {
-	_OutputCh = OutputCh;
+void U_PWM::Init(uint16_t period, uint16_t pulse) {
 	GPIOInit();
 	TIMInit(period, pulse);
 	ITInit();
@@ -52,6 +50,8 @@ void U_PWM::TIMInit(uint16_t period, uint16_t pulse) {
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	TIM_OCInitTypeDef TIM_OCInitStructure;
 
+	TIMRCCInit();
+
 	TIM_DeInit(_TIMx);
 	TIM_TimeBaseStructInit(&TIM_TimeBaseInitStructure);
 	TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
@@ -67,6 +67,11 @@ void U_PWM::TIMInit(uint16_t period, uint16_t pulse) {
 	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
 	TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Reset;
 	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+
+	if (IS_TIM_LIST2_PERIPH(_TIMx)) {
+		//作为高级定时器必须要开启PWM输出
+		TIM_CtrlPWMOutputs(_TIMx, ENABLE);
+	}
 
 	if (_OutputCh >= 0x0f) {
 		//Error @Romeli PWM通道错误
