@@ -240,7 +240,7 @@ void U_StepMotor::IRQ() {
 		SetSpeed(_AccDecUnit->GetCurSpeed());
 		break;
 	case Flow_Run:
-		if (_CurStep >= _DecelStartStep) {
+		if (_StepLimit && (_CurStep >= _DecelStartStep)) {
 			//到达减速步数，进入减速流程
 			StartDec();
 			_Flow = Flow_Decel;
