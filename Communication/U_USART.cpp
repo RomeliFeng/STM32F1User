@@ -11,58 +11,38 @@
 #define CR1_UE_Reset              ((uint16_t)0xDFFF)  /*!< U_USART Disable Mask */
 
 U_USART::U_USART(uint16_t rxBufSize, uint16_t txBufSize, USART_TypeDef* USARTx,
-		DMA_TypeDef* DMAx, DMA_Channel_TypeDef* DMAy_Channelx_Rx,
-		DMA_Channel_TypeDef* DMAy_Channelx_Tx) :
-		U_Steam(rxBufSize, txBufSize) {
+		U_IT_Typedef itUSARTx) :
+		U_Steam(rxBufSize, txBufSize), _USARTx(USARTx), _ITUSARTx(itUSARTx) {
 	//默认设置
-	_USARTx = USARTx;
-	_DMAx = DMAx;
-	_DMAy_Channelx_Rx = DMAy_Channelx_Rx;
-	_DMAy_Channelx_Tx = DMAy_Channelx_Tx;
+	_mode = Mode_Interrupt;
+}
 
-	if (_DMAy_Channelx_Tx == DMA1_Channel1) {
-		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC1;
-	} else if (_DMAy_Channelx_Tx == DMA1_Channel2) {
-		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC2;
-	} else if (_DMAy_Channelx_Tx == DMA1_Channel3) {
-		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC3;
-	} else if (_DMAy_Channelx_Tx == DMA1_Channel4) {
-		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC4;
-	} else if (_DMAy_Channelx_Tx == DMA1_Channel5) {
-		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC5;
-	} else if (_DMAy_Channelx_Tx == DMA1_Channel6) {
-		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC6;
-	} else if (_DMAy_Channelx_Tx == DMA1_Channel7) {
-		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC7;
-	} else if (_DMAy_Channelx_Tx == DMA2_Channel1) {
-		_DMA_IT_TC_TX = (uint32_t) DMA2_IT_TC1;
-	} else if (_DMAy_Channelx_Tx == DMA2_Channel2) {
-		_DMA_IT_TC_TX = (uint32_t) DMA2_IT_TC2;
-	} else if (_DMAy_Channelx_Tx == DMA2_Channel3) {
-		_DMA_IT_TC_TX = (uint32_t) DMA2_IT_TC3;
-	} else if (_DMAy_Channelx_Tx == DMA2_Channel4) {
-		_DMA_IT_TC_TX = (uint32_t) DMA2_IT_TC4;
-	} else if (_DMAy_Channelx_Tx == DMA2_Channel5) {
-		_DMA_IT_TC_TX = (uint32_t) DMA2_IT_TC5;
-	}
+U_USART::U_USART(uint16_t rxBufSize,
+		uint16_t txBufSize, USART_TypeDef* USARTx,
+		U_IT_Typedef itUSARTx, DMA_TypeDef* DMAx,
+		DMA_Channel_TypeDef* DMAy_Channelx_Rx,
+		DMA_Channel_TypeDef* DMAy_Channelx_Tx, U_IT_Typedef itDMAxRx,
+		U_IT_Typedef itDMAxTx) :
+		U_Steam(rxBufSize, txBufSize),
+		_USARTx(USARTx), _DMAx(DMAx), _DMAy_Channelx_Rx(DMAy_Channelx_Rx), _DMAy_Channelx_Tx(
+				DMAy_Channelx_Tx) {
 
-	ReceiveEvent = NULL;
-
-	_newFrame = false;
+	CalcDMATC();
 
 	_DMARxBuf.data = 0;
 	_DMARxBuf.tail = 0;
 	_DMARxBuf.busy = false;
 
-	_TxBuf2.data = 0;
-	_TxBuf2.tail = 0;
-	_TxBuf2.busy = false;
+	_DMATxBuf.data = 0;
+	_DMATxBuf.tail = 0;
+	_DMATxBuf.busy = false;
 
-	_mode = USARTMode_DMA;
-	_RS485Status = USARTRS485Status_Disable;
+	_mode = Mode_DMA;
 }
 
 U_USART::~U_USART() {
+	delete _DMARxBuf.data;
+	delete _DMATxBuf.data;
 }
 
 /*
@@ -75,18 +55,18 @@ U_USART::~U_USART() {
  * return void
  */
 void U_USART::Init(uint32_t baud, uint16_t USART_Parity,
-		USARTRS485Status_Typedef RS485Status, USARTMode_Typedef mode) {
+		RS485Status_Typedef RS485Status, Mode_Typedef mode) {
 	_mode = mode;
 	_RS485Status = RS485Status;
 	//GPIO初始化
 	GPIOInit();
 	//如果有流控引脚，使用切换为接受模式
-	if (_RS485Status == USARTRS485Status_Enable) {
-		RS485DirCtl(USARTRS485Dir_Rx);
+	if (_RS485Status == RS485Status_Enable) {
+		RS485DirCtl(RS485Dir_Rx);
 	}
 	//USART外设初始化
 	USARTInit(baud, USART_Parity);
-	if (mode == USARTMode_DMA) {
+	if (mode == Mode_DMA) {
 		//DMA初始化
 		DMAInit();
 	}
@@ -107,16 +87,16 @@ Status_Typedef U_USART::Write(uint8_t* data, uint16_t len) {
 	DataSteam_Typedef statck;
 	statck.data = data;
 	statck.tail = len;
-	if (_mode == USARTMode_DMA) {
+	if (_mode == Mode_DMA) {
 		while (statck.tail != 0) {
 			if ((_DMAy_Channelx_Tx->CMAR != (uint32_t) _TxBuf.data)
 					&& (_TxBuf.size - _TxBuf.tail != 0)) {
 				//若缓冲区1空闲，并且有空闲空间
 				DMASend(&statck, &_TxBuf);
-			} else if ((_DMAy_Channelx_Tx->CMAR != (uint32_t) _TxBuf2.data)
-					&& (_TxBuf2.size - _TxBuf2.tail != 0)) {
+			} else if ((_DMAy_Channelx_Tx->CMAR != (uint32_t) _DMATxBuf.data)
+					&& (_DMATxBuf.size - _DMATxBuf.tail != 0)) {
 				//若缓冲区2空闲，并且有空闲空间
-				DMASend(&statck, &_TxBuf2);
+				DMASend(&statck, &_DMATxBuf);
 			} else {
 				//发送繁忙，两个缓冲区均在使用或已满
 				//FIXME@romeli 需要添加超时返回代码
@@ -214,10 +194,10 @@ Status_Typedef U_USART::IRQDMATx() {
 		//缓冲区1发送完成，置位指针
 		_TxBuf.tail = 0;
 		//判断缓冲区2是否有数据，并且忙标志未置位（防止填充到一半发送出去）
-		if (_TxBuf2.tail != 0 && _TxBuf2.busy == false) {
+		if (_DMATxBuf.tail != 0 && _DMATxBuf.busy == false) {
 			//当前使用缓冲区切换为缓冲区2，并加载DMA发送
-			_DMAy_Channelx_Tx->CMAR = (uint32_t) _TxBuf2.data;
-			_DMAy_Channelx_Tx->CNDTR = _TxBuf2.tail;
+			_DMAy_Channelx_Tx->CMAR = (uint32_t) _DMATxBuf.data;
+			_DMAy_Channelx_Tx->CNDTR = _DMATxBuf.tail;
 
 			_DMAy_Channelx_Tx->CCR |= DMA_CCR1_EN;
 			return Status_Ok;
@@ -226,9 +206,9 @@ Status_Typedef U_USART::IRQDMATx() {
 			//无数据需要发送，清除发送队列忙标志
 			_DMATxBusy = false;
 		}
-	} else if (_DMAy_Channelx_Tx->CMAR == (uint32_t) _TxBuf2.data) {
+	} else if (_DMAy_Channelx_Tx->CMAR == (uint32_t) _DMATxBuf.data) {
 		//缓冲区2发送完成，置位指针
-		_TxBuf2.tail = 0;
+		_DMATxBuf.tail = 0;
 		//判断缓冲区1是否有数据，并且忙标志未置位（防止填充到一半发送出去）
 		if (_TxBuf.tail != 0 && _TxBuf.busy == false) {
 			//当前使用缓冲区切换为缓冲区1，并加载DMA发送
@@ -247,10 +227,10 @@ Status_Typedef U_USART::IRQDMATx() {
 		return Status_Error;
 	}
 
-	if (_RS485Status == USARTRS485Status_Enable) {
+	if (_RS485Status == RS485Status_Enable) {
 		while (!(_USARTx->SR & USART_FLAG_TC))
 			;
-		RS485DirCtl(USARTRS485Dir_Rx);
+		RS485DirCtl(RS485Dir_Rx);
 	}
 	return Status_Ok;
 }
@@ -278,7 +258,7 @@ void U_USART::GPIOInit() {
 	 GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
 	 GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-	 if (status == USARTRS485Status_Enable) {
+	 if (status == RS485Status_Enable) {
 	 //设置PC12流控制引脚
 	 GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
 	 GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
@@ -287,44 +267,44 @@ void U_USART::GPIOInit() {
 	 }*/
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
-/*
- * author Romeli
- * explain IT初始化（派生类需实现）
- * return void
- */
-void U_USART::ITInit() {
-//	NVIC_InitTypeDef NVIC_InitStructure;
-//	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel2_IRQn;
-//	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
-//			USART3_DMA1_Channel2_IRQn.ITPriority_PreemptionPriority;
-//	NVIC_InitStructure.NVIC_IRQChannelSubPriority =
-//			USART3_DMA1_Channel2_IRQn.ITPriority_SubPriority;
-//	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-//	NVIC_Init(&NVIC_InitStructure);
-//
-//	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel3_IRQn;
-//	NVIC_Init(&NVIC_InitStructure);
-//
-//	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-//	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-//	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
-//			USART3_USART3_IRQn.ITPriority_PreemptionPriority;
-//	NVIC_InitStructure.NVIC_IRQChannelSubPriority =
-//			USART3_USART3_IRQn.ITPriority_SubPriority;
-//
-//	NVIC_Init(&NVIC_InitStructure);
-}
-
-#pragma GCC diagnostic pop
-
-void U_USART::RS485DirCtl(USARTRS485Dir_Typedef dir) {
-	if (dir == USARTRS485Dir_Rx) {
+void U_USART::RS485DirCtl(RS485Dir_Typedef dir) {
+	if (dir == RS485Dir_Rx) {
 
 	} else {
 
+	}
+}
+
+/*
+ * author Romeli
+ * explain 根据DMA通道计算TC位
+ * return void
+ */
+void U_USART::CalcDMATC() {
+	if (_DMAy_Channelx_Tx == DMA1_Channel1) {
+		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC1;
+	} else if (_DMAy_Channelx_Tx == DMA1_Channel2) {
+		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC2;
+	} else if (_DMAy_Channelx_Tx == DMA1_Channel3) {
+		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC3;
+	} else if (_DMAy_Channelx_Tx == DMA1_Channel4) {
+		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC4;
+	} else if (_DMAy_Channelx_Tx == DMA1_Channel5) {
+		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC5;
+	} else if (_DMAy_Channelx_Tx == DMA1_Channel6) {
+		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC6;
+	} else if (_DMAy_Channelx_Tx == DMA1_Channel7) {
+		_DMA_IT_TC_TX = (uint32_t) DMA1_IT_TC7;
+	} else if (_DMAy_Channelx_Tx == DMA2_Channel1) {
+		_DMA_IT_TC_TX = (uint32_t) DMA2_IT_TC1;
+	} else if (_DMAy_Channelx_Tx == DMA2_Channel2) {
+		_DMA_IT_TC_TX = (uint32_t) DMA2_IT_TC2;
+	} else if (_DMAy_Channelx_Tx == DMA2_Channel3) {
+		_DMA_IT_TC_TX = (uint32_t) DMA2_IT_TC3;
+	} else if (_DMAy_Channelx_Tx == DMA2_Channel4) {
+		_DMA_IT_TC_TX = (uint32_t) DMA2_IT_TC4;
+	} else if (_DMAy_Channelx_Tx == DMA2_Channel5) {
+		_DMA_IT_TC_TX = (uint32_t) DMA2_IT_TC5;
 	}
 }
 
@@ -355,10 +335,29 @@ void U_USART::USARTInit(uint32_t baud, uint16_t USART_Parity) {
  * explain IT初始化
  * return void
  */
-void U_USART::ITInit(USARTMode_Typedef mode) {
-	//先调用派生类实现的NVIC初始化
-	ITInit();
-	if (mode == USARTMode_DMA) {
+void U_USART::ITInit(Mode_Typedef mode) {
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	NVIC_InitStructure.NVIC_IRQChannel = _ITUSARTx.NVIC_IRQChannel;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
+			_ITUSARTx.PreemptionPriority;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = _ITUSARTx.SubPriority;
+	NVIC_Init(&NVIC_InitStructure);
+
+	if (mode == Mode_DMA) {
+		NVIC_InitStructure.NVIC_IRQChannel = _ITDMAxRx.NVIC_IRQChannel;
+		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
+				_ITDMAxRx.PreemptionPriority;
+		NVIC_InitStructure.NVIC_IRQChannelSubPriority = _ITDMAxRx.SubPriority;
+		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+		NVIC_Init(&NVIC_InitStructure);
+
+		NVIC_InitStructure.NVIC_IRQChannel = _ITDMAxTx.NVIC_IRQChannel;
+		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
+				_ITDMAxTx.PreemptionPriority;
+		NVIC_InitStructure.NVIC_IRQChannelSubPriority = _ITDMAxTx.SubPriority;
+		NVIC_Init(&NVIC_InitStructure);
 		//串口发送接收的DMA功能
 		USART_DMACmd(_USARTx, USART_DMAReq_Tx, ENABLE);
 		USART_DMACmd(_USARTx, USART_DMAReq_Rx, ENABLE);
@@ -371,6 +370,11 @@ void U_USART::ITInit(USARTMode_Typedef mode) {
 	USART_ITConfig(_USARTx, USART_IT_IDLE, ENABLE);
 }
 
+/*
+ * author Romeli
+ * explain 初始化DMA设置
+ * return void
+ */
 void U_USART::DMAInit() {
 	DMA_InitTypeDef DMA_InitStructure;
 
@@ -380,11 +384,11 @@ void U_USART::DMAInit() {
 	}
 	_DMARxBuf.data = new uint8_t[_DMARxBuf.size];
 
-	_TxBuf2.size = _TxBuf.size;
-	if (_TxBuf2.data != 0) {
-		delete _TxBuf2.data;
+	_DMATxBuf.size = _TxBuf.size;
+	if (_DMATxBuf.data != 0) {
+		delete _DMATxBuf.data;
 	}
-	_TxBuf2.data = new uint8_t[_TxBuf2.size];
+	_DMATxBuf.data = new uint8_t[_DMATxBuf.size];
 
 	//开启DMA时钟
 	DMARCCInit();
@@ -447,8 +451,8 @@ Status_Typedef U_USART::DMASend(DataSteam_Typedef * steam,
 			//DMA发送空闲，发送新的缓冲
 			_DMATxBusy = true;
 
-			if (_RS485Status == USARTRS485Status_Enable) {
-				RS485DirCtl(USARTRS485Dir_Tx);
+			if (_RS485Status == RS485Status_Enable) {
+				RS485DirCtl(RS485Dir_Tx);
 			}
 
 			//设置DMA地址
