@@ -14,6 +14,11 @@ U_USART::U_USART(uint16_t rxBufSize, uint16_t txBufSize, USART_TypeDef* USARTx,
 		U_IT_Typedef itUSARTx) :
 		U_Steam(rxBufSize, txBufSize), _USARTx(USARTx), _ITUSARTx(itUSARTx) {
 	//默认设置
+	_DMAx = 0;
+	_DMA_IT_TC_TX = 0;
+	_DMAy_Channelx_Rx = 0;
+	_DMAy_Channelx_Tx = 0;
+	
 	_mode = Mode_Interrupt;
 }
 
@@ -23,9 +28,15 @@ U_USART::U_USART(uint16_t rxBufSize,
 		DMA_Channel_TypeDef* DMAy_Channelx_Rx,
 		DMA_Channel_TypeDef* DMAy_Channelx_Tx, U_IT_Typedef itDMAxRx,
 		U_IT_Typedef itDMAxTx) :
-		U_Steam(rxBufSize, txBufSize),
-		_USARTx(USARTx), _DMAx(DMAx), _DMAy_Channelx_Rx(DMAy_Channelx_Rx), _DMAy_Channelx_Tx(
-				DMAy_Channelx_Tx) {
+		U_Steam(rxBufSize, txBufSize) {
+
+	_USARTx = USARTx;
+	_ITUSARTx = itUSARTx;
+	_DMAx = DMAx;
+	_DMAy_Channelx_Rx = DMAy_Channelx_Rx;
+	_DMAy_Channelx_Tx = DMAy_Channelx_Tx;
+	_ITDMAxRx = itDMAxRx;
+	_ITDMAxTx = itDMAxTx;
 
 	CalcDMATC();
 
@@ -55,8 +66,7 @@ U_USART::~U_USART() {
  * return void
  */
 void U_USART::Init(uint32_t baud, uint16_t USART_Parity,
-		RS485Status_Typedef RS485Status, Mode_Typedef mode) {
-	_mode = mode;
+		RS485Status_Typedef RS485Status) {
 	_RS485Status = RS485Status;
 	//GPIO初始化
 	GPIOInit();
@@ -66,7 +76,7 @@ void U_USART::Init(uint32_t baud, uint16_t USART_Parity,
 	}
 	//USART外设初始化
 	USARTInit(baud, USART_Parity);
-	if (mode == Mode_DMA) {
+	if (_mode == Mode_DMA) {
 		//DMA初始化
 		DMAInit();
 	}

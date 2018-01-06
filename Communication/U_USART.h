@@ -41,8 +41,7 @@ public:
 	virtual ~U_USART();
 
 	void Init(uint32_t baud, uint16_t USART_Parity = USART_Parity_No,
-			RS485Status_Typedef RS485Status = RS485Status_Disable,
-			Mode_Typedef mode = Mode_DMA);
+			RS485Status_Typedef RS485Status = RS485Status_Disable);
 
 	Status_Typedef Write(uint8_t* data, uint16_t len);
 
@@ -51,11 +50,11 @@ public:
 	Status_Typedef IRQUSART();
 	Status_Typedef IRQDMATx();
 protected:
-	USART_TypeDef *_USARTx = 0;
-	DMA_TypeDef *_DMAx = 0;
-	DMA_Channel_TypeDef *_DMAy_Channelx_Rx = 0;
-	DMA_Channel_TypeDef *_DMAy_Channelx_Tx = 0;
-	uint32_t _DMA_IT_TC_TX = 0;
+	USART_TypeDef *_USARTx;
+	DMA_TypeDef *_DMAx;
+	DMA_Channel_TypeDef *_DMAy_Channelx_Rx;
+	DMA_Channel_TypeDef *_DMAy_Channelx_Tx;
+	uint32_t _DMA_IT_TC_TX;
 
 	virtual void USARTRCCInit() = 0;
 	virtual void DMARCCInit() = 0;
