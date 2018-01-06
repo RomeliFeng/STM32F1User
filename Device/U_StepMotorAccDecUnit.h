@@ -24,12 +24,13 @@ public:
 	};
 
 	//构造函数
-	U_StepMotorAccDecUnit(TIM_TypeDef* TIMx);
+	U_StepMotorAccDecUnit(TIM_TypeDef* TIMx, U_IT_Typedef& it);
 	virtual ~U_StepMotorAccDecUnit();
 
 	void Init();
 
 	static void InitAll();
+	static uint8_t GetTheLowestPreemptionPriority();
 
 	static U_StepMotorAccDecUnit* GetFreeUnit(U_StepMotor* stepMotor);
 	static void Free(U_StepMotor* stepMotor);
@@ -58,8 +59,9 @@ protected:
 	TIM_TypeDef* _TIMx;	//速度计算用定时器
 	U_StepMotor* _StepMotor;
 
+	U_IT_Typedef _IT; //中断优先级
+
 	virtual void TIMRCCInit() = 0;
-	virtual void ITInit() = 0;
 private:
 	static U_StepMotorAccDecUnit* _Pool[];
 	static uint8_t _PoolSp;
@@ -72,6 +74,7 @@ private:
 	volatile bool _Busy;
 
 	void TIMInit();
+	void ITInit();
 };
 
 

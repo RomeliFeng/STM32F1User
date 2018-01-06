@@ -15,8 +15,9 @@ uint8_t U_StepMotorAccDecUnit::_PoolSp = 0;
  * explain 把自身加入资源池，并且初始化变量
  * return com
  */
-U_StepMotorAccDecUnit::U_StepMotorAccDecUnit(TIM_TypeDef* TIMx) {
-	_TIMx = TIMx;
+U_StepMotorAccDecUnit::U_StepMotorAccDecUnit(TIM_TypeDef* TIMx,
+		U_IT_Typedef& it) :
+		_TIMx(TIMx), _IT(it) {
 	//自动将对象指针加入资源池
 	_Pool[_PoolSp++] = this;
 
@@ -61,6 +62,21 @@ void U_StepMotorAccDecUnit::InitAll() {
 		//Error @Romeli 无速度计算单元（无法进行运动）
 		U_DebugOut("There have no speed control unit exsit");
 	}
+}
+
+/*
+ * author Romeli
+ * explain 获取加减速电机模块中权限最低的抢占优先级
+ * return uint8_t
+ */
+uint8_t U_StepMotorAccDecUnit::GetTheLowestPreemptionPriority() {
+	uint8_t preemptionPriority = 0;
+	for (uint8_t i = 0; i < _PoolSp; ++i) {
+		if (_Pool[i]->_IT.PreemptionPriority > preemptionPriority) {
+			preemptionPriority = _Pool[i]->_IT.PreemptionPriority;
+		}
+	}
+	return preemptionPriority;
 }
 
 /*
@@ -237,28 +253,10 @@ void U_StepMotorAccDecUnit::SetCurSpeed(uint16_t speed) {
  * return void
  */
 void U_StepMotorAccDecUnit::IRQ() {
-	_Done = true;
-	_TIMx->CNT = _TIMx->ARR;
 	//停止
 	Stop();
-}
-
-/*
- * author Romeli
- * explain 初始化中断设置（此函数应在派生类中重写）
- * return void
- */
-void U_StepMotorAccDecUnit::ITInit() {
-	U_DebugOut("This function should be override");
-	/*	NVIC_InitTypeDef NVIC_InitStructure;
-	 //设置中断
-	 NVIC_InitStructure.NVIC_IRQChannel = TIM7_IRQn;
-	 NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	 NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
-	 SMSpeedCtlUnit1_TIM7_IRQn.ITPriority_PreemptionPriority;
-	 NVIC_InitStructure.NVIC_IRQChannelSubPriority =
-	 SMSpeedCtlUnit1_TIM7_IRQn.ITPriority_SubPriority;
-	 NVIC_Init(&NVIC_InitStructure);*/
+	_TIMx->CNT = _TIMx->ARR;
+	_Done = true;
 }
 
 /*
@@ -281,3 +279,20 @@ void U_StepMotorAccDecUnit::TIMInit() {
 
 	TIM_ARRPreloadConfig(_TIMx, ENABLE);
 }
+
+/*
+ * author Romeli
+ * explain 初始化中断设置
+ * return void
+ */
+void U_StepMotorAccDecUnit::ITInit() {
+	NVIC_InitTypeDef NVIC_InitStructure;
+	 //设置中断
+	NVIC_InitStructure.NVIC_IRQChannel = _IT.NVIC_IRQChannel;
+	 NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
+			_IT.PreemptionPriority;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = _IT.SubPriority;
+	NVIC_Init(&NVIC_InitStructure);
+}
+

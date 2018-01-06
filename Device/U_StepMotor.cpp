@@ -11,9 +11,9 @@
 U_StepMotor* U_StepMotor::_Pool[4];
 uint8_t U_StepMotor::_PoolSp = 0;
 
-U_StepMotor::U_StepMotor(TIM_TypeDef* TIMx, uint8_t TIMx_CCR_Ch) {
-	_TIMx = TIMx;
-	_TIMx_CCR_Ch = TIMx_CCR_Ch;
+U_StepMotor::U_StepMotor(TIM_TypeDef* TIMx, uint8_t TIMx_CCR_Ch,
+		U_IT_Typedef& it) :
+		_TIMx(TIMx), _TIMx_CCR_Ch(TIMx_CCR_Ch), _IT(it) {
 
 	switch (_TIMx_CCR_Ch) {
 	case 1:
@@ -84,8 +84,28 @@ void U_StepMotor::InitAll() {
 		//Error @Romeli 无运动模块（无法进行运动）
 		U_DebugOut("There have no speed control unit exsit");
 	}
+	if (GetTheLowestPreemptionPriority()
+			>= U_StepMotorAccDecUnit::GetTheLowestPreemptionPriority()) {
+		//Error @Romeli 存在速度计算单元的抢占优先级低于或等于步进电机单元的抢占优先级的情况，需要避免
+		U_DebugOut("The preemption priority setting error");
+	}
 	//初始化所有的速度计算单元
 	U_StepMotorAccDecUnit::InitAll();
+}
+
+/*
+ * author Romeli
+ * explain 获取步进电机模块中权限最低的抢占优先级
+ * return uint8_t
+ */
+uint8_t U_StepMotor::GetTheLowestPreemptionPriority() {
+	uint8_t preemptionPriority = 0;
+	for (uint8_t i = 0; i < _PoolSp; ++i) {
+		if (_Pool[i]->_IT.PreemptionPriority > preemptionPriority) {
+			preemptionPriority = _Pool[i]->_IT.PreemptionPriority;
+		}
+	}
+	return preemptionPriority;
 }
 
 /*
@@ -293,25 +313,6 @@ void U_StepMotor::GPIOInit() {
 
 /*
  * author Romeli
- * explain IT初始化（应在派生类中重写）
- * return void
- */
-void U_StepMotor::ITInit() {
-	U_DebugOut("This function should be override");
-	/*	NVIC_InitTypeDef NVIC_InitStructure;
-	 //设置中断
-
-	 NVIC_InitStructure.NVIC_IRQChannel = TIM8_UP_IRQn;
-	 NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	 NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
-	 StepMotor3_TIM8_UP_IRQn.ITPriority_PreemptionPriority;
-	 NVIC_InitStructure.NVIC_IRQChannelSubPriority =
-	 StepMotor3_TIM8_UP_IRQn.ITPriority_SubPriority;
-	 NVIC_Init(&NVIC_InitStructure);*/
-}
-
-/*
- * author Romeli
  * explain 设置方向引脚状态（应在派生类中重写）
  * return void
  */
@@ -404,6 +405,24 @@ void U_StepMotor::TIMInit() {
 
 /*
  * author Romeli
+ * explain IT初始化
+ * return void
+ */
+void U_StepMotor::ITInit() {
+	NVIC_InitTypeDef NVIC_InitStructure;
+	 //设置中断
+
+	NVIC_InitStructure.NVIC_IRQChannel = _IT.NVIC_IRQChannel;
+	 NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	 NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
+			_IT.PreemptionPriority;
+	 NVIC_InitStructure.NVIC_IRQChannelSubPriority =
+			 _IT.SubPriority;
+	NVIC_Init(&NVIC_InitStructure);
+}
+
+/*
+ * author Romeli
  * explain 更改当前步进电机方向
  * param dir 欲改变的方向
  * return void
@@ -445,6 +464,10 @@ uint32_t U_StepMotor::GetDecelStep(uint16_t speedFrom) {
  * return void
  */
 void U_StepMotor::SetSpeed(uint16_t speed) {
+	if (speed <= 150) {
+		//Error @Romeli 过低的速度，不应该发生
+		U_DebugOut("Under speed show be disappear");
+	}
 	_TIMx->ARR = (uint16_t) (_TIMy_FRQ / speed);
 	*_TIMx_CCRx = (uint16_t) (_TIMx->ARR >> 1);
 }

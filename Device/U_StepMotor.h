@@ -30,12 +30,13 @@ public:
 			Dir_CW, Dir_CCW
 	};
 
-	U_StepMotor(TIM_TypeDef* TIMx, uint8_t TIMx_CCR_Ch);
+	U_StepMotor(TIM_TypeDef* TIMx, uint8_t TIMx_CCR_Ch,
+			U_IT_Typedef& it);
 	virtual ~U_StepMotor();
 
 	void Init();
-
 	static void InitAll();
+	static uint8_t GetTheLowestPreemptionPriority();
 
 	bool IsBusy() {
 		return _Busy;
@@ -87,6 +88,8 @@ public:
 
 	void IRQ();
 protected:
+	U_IT_Typedef _IT; //中断优先级
+
 	TIM_TypeDef* _TIMx;	//脉冲发生用定时器
 	uint8_t _TIMx_CCR_Ch;
 	volatile uint16_t* _TIMx_CCRx; //脉冲发生定时器的输出通道
@@ -94,7 +97,6 @@ protected:
 
 	virtual void GPIOInit() = 0;
 	virtual void TIMRCCInit() = 0;
-	virtual void ITInit() = 0;
 
 	virtual void SetDirPin(FunctionalState newState) = 0;
 	virtual void SetEnPin(FunctionalState newState) = 0;
@@ -123,6 +125,7 @@ private:
 	volatile bool _Busy;	//当前电机繁忙?
 
 	void TIMInit();
+	void ITInit();
 
 	void SetDir(Dir_Typedef dir);	//设置电机方向
 	void StartDec();
