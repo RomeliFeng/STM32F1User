@@ -14,7 +14,7 @@
 
 class U_Encoder {
 public:
-	U_Encoder(TIM_TypeDef* TIMx);
+	U_Encoder(TIM_TypeDef* TIMx, U_IT_Typedef& it);
 	virtual ~U_Encoder();
 
 	//初始化硬件
@@ -33,14 +33,15 @@ protected:
 
 	virtual void GPIOInit() = 0;
 	virtual void TIMRCCInit() = 0;
-	virtual void ITInit() = 0;
 private:
 	static U_Encoder* _Pool[];
 	static uint8_t _PoolSp;
 
+	U_IT_Typedef _IT; //中断优先级
 	volatile int16_t _ExCNT;
 
 	void TIMInit();
+	void ITInit();
 };
 
 #endif /* U_ENCODER_H_ */

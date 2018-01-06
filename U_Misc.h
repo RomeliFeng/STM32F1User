@@ -80,4 +80,10 @@ typedef enum _Status_Typedef {
 	Status_Ok, Status_Error, Status_TimeOut
 } Status_Typedef;
 
+typedef struct {
+	uint8_t NVIC_IRQChannel;
+	uint8_t PreemptionPriority;
+	uint8_t SubPriority;
+} U_IT_Typedef;
+
 #endif /* U_MISC_H_ */

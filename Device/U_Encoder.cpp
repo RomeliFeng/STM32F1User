@@ -10,8 +10,8 @@
 U_Encoder* U_Encoder::_Pool[4];
 uint8_t U_Encoder::_PoolSp = 0;
 
-U_Encoder::U_Encoder(TIM_TypeDef* TIMx) {
-	_TIMx = TIMx;
+U_Encoder::U_Encoder(TIM_TypeDef* TIMx, U_IT_Typedef& it) :
+		_TIMx(TIMx), _IT(it) {
 	_ExCNT = 0;
 
 	//自动将对象指针加入资源池
@@ -88,22 +88,6 @@ void U_Encoder::GPIOInit() {
 	 GPIO_Init(GPIOA, &GPIO_InitStructure);*/
 }
 
-void U_Encoder::ITInit() {
-	U_DebugOut("This function should be override");
-	/*	NVIC_InitTypeDef NVIC_InitStructure;
-
-	 NVIC_InitStructure.NVIC_IRQChannel = TIM1_UP_IRQn;
-	 NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	 NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
-	 Encoder2_TIM1_UP_IRQn.ITPriority_PreemptionPriority;
-	 NVIC_InitStructure.NVIC_IRQChannelSubPriority =
-	 Encoder2_TIM1_UP_IRQn.ITPriority_SubPriority;
-	 NVIC_Init(&NVIC_InitStructure);
-
-	 TIM_ClearITPendingBit(_TIMx, TIM_IT_Update);
-	 TIM_ITConfig(_TIMx, TIM_IT_Update, ENABLE);*/
-}
-
 void U_Encoder::TIMInit() {
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 
@@ -127,5 +111,20 @@ void U_Encoder::TIMInit() {
 	TIM_ICInitStructure.TIM_ICFilter = 1;
 	TIM_ICInit(_TIMx, &TIM_ICInitStructure);
 	_TIMx->CNT = 0;
+}
+
+void U_Encoder::ITInit() {
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	NVIC_InitStructure.NVIC_IRQChannel = _IT.NVIC_IRQChannel;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
+			_IT.PreemptionPriority;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority =
+			_IT.SubPriority;
+	NVIC_Init(&NVIC_InitStructure);
+
+	TIM_ClearITPendingBit(_TIMx, TIM_IT_Update);
+	TIM_ITConfig(_TIMx, TIM_IT_Update, ENABLE);
 }
 
