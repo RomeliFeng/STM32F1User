@@ -12,8 +12,10 @@ U_StepMotor* U_StepMotor::_Pool[4];
 uint8_t U_StepMotor::_PoolSp = 0;
 
 U_StepMotor::U_StepMotor(TIM_TypeDef* TIMx, uint8_t TIMx_CCR_Ch,
-		U_IT_Typedef& it) :
-		_TIMx(TIMx), _TIMx_CCR_Ch(TIMx_CCR_Ch), _IT(it) {
+		U_IT_Typedef& it) {
+	_TIMx = TIMx;
+	_TIMx_CCR_Ch = TIMx_CCR_Ch;
+	_IT = it;
 
 	switch (_TIMx_CCR_Ch) {
 	case 1:
@@ -85,7 +87,7 @@ void U_StepMotor::InitAll() {
 		U_DebugOut("There have no speed control unit exsit");
 	}
 	if (GetTheLowestPreemptionPriority()
-			>= U_StepMotorAccDecUnit::GetTheLowestPreemptionPriority()) {
+			<= U_StepMotorAccDecUnit::GetTheLowestPreemptionPriority()) {
 		//Error @Romeli 存在速度计算单元的抢占优先级低于或等于步进电机单元的抢占优先级的情况，需要避免
 		U_DebugOut("The preemption priority setting error");
 	}

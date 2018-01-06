@@ -10,8 +10,10 @@
 U_Encoder* U_Encoder::_Pool[4];
 uint8_t U_Encoder::_PoolSp = 0;
 
-U_Encoder::U_Encoder(TIM_TypeDef* TIMx, U_IT_Typedef& it) :
-		_TIMx(TIMx), _IT(it) {
+U_Encoder::U_Encoder(TIM_TypeDef* TIMx, U_IT_Typedef& it) {
+	_TIMx = TIMx;
+	_IT = it;
+
 	_ExCNT = 0;
 
 	//自动将对象指针加入资源池

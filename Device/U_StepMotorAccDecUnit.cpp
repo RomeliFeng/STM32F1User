@@ -16,8 +16,9 @@ uint8_t U_StepMotorAccDecUnit::_PoolSp = 0;
  * return com
  */
 U_StepMotorAccDecUnit::U_StepMotorAccDecUnit(TIM_TypeDef* TIMx,
-		U_IT_Typedef& it) :
-		_TIMx(TIMx), _IT(it) {
+		U_IT_Typedef& it) {
+	_TIMx = TIMx;
+	_IT = it;
 	//自动将对象指针加入资源池
 	_Pool[_PoolSp++] = this;
 
