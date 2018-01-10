@@ -110,6 +110,14 @@ uint8_t U_StepMotor::GetTheLowestPreemptionPriority() {
 	return preemptionPriority;
 }
 
+void U_StepMotor::SetSpeed(uint16_t maxSpeed, uint32_t accel) {
+	maxSpeed = maxSpeed < 150 ? 150 : maxSpeed;
+	accel = accel < 1500 ? 1500 : accel;
+	_MaxSpeed = maxSpeed;
+	_Accel = accel;
+	_Decel = accel;
+}
+
 /*
  * author Romeli
  * explain 移动步进电机

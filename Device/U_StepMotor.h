@@ -41,6 +41,8 @@ public:
 	bool IsBusy() {
 		return _Busy;
 	}
+	//设置速度和加速度
+	void SetSpeed(uint16_t maxSpeed, uint32_t accel);
 	//设置保护限位
 	inline void SetCWLimit(uint8_t cwLimit) {
 		_CWLimit = cwLimit;
@@ -53,14 +55,8 @@ public:
 		SetCCWLimit(ccwLimit);
 	}
 	//设置默认电机方向
-	void SetRelativeDir(Dir_Typedef dir) {
+	inline void SetRelativeDir(Dir_Typedef dir) {
 		_RelativeDir = dir;
-	}
-	//设置速度和加速度
-	void SetSpeed(uint16_t maxSpeed, uint32_t accel) {
-		_MaxSpeed = maxSpeed < 150 ? 150 : maxSpeed;
-		_Accel = accel;
-		_Decel = accel;
 	}
 	inline uint32_t GetCurStep() {
 		return _CurStep;
