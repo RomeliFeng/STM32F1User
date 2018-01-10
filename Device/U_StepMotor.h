@@ -58,7 +58,7 @@ public:
 	}
 	//设置速度和加速度
 	void SetSpeed(uint16_t maxSpeed, uint32_t accel) {
-		_MaxSpeed = maxSpeed;
+		_MaxSpeed = maxSpeed < 150 ? 150 : maxSpeed;
 		_Accel = accel;
 		_Decel = accel;
 	}
