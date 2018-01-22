@@ -20,7 +20,7 @@ uint8_t U_Convert::byNumber(int32_t num, uint8_t base, uint8_t* str) {
 	//小于零取反加负号
 	if (num < 0) {
 		num = -num;
-		*str++ = '-';
+		*str = '-';
 		++len;
 	}
 

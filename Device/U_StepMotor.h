@@ -43,6 +43,8 @@ public:
 	}
 	//设置速度和加速度
 	void SetSpeed(uint16_t maxSpeed, uint32_t accel);
+	//设置默认电机方向
+	void SetRelativeDir(Dir_Typedef dir);
 	//设置保护限位
 	inline void SetCWLimit(uint8_t cwLimit) {
 		_CWLimit = cwLimit;
@@ -53,10 +55,6 @@ public:
 	inline void SetLimit(uint8_t cwLimit, uint8_t ccwLimit) {
 		SetCWLimit(cwLimit);
 		SetCCWLimit(ccwLimit);
-	}
-	//设置默认电机方向
-	inline void SetRelativeDir(Dir_Typedef dir) {
-		_RelativeDir = dir;
 	}
 	inline uint32_t GetCurStep() {
 		return _CurStep;

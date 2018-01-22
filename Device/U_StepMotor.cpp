@@ -118,6 +118,10 @@ void U_StepMotor::SetSpeed(uint16_t maxSpeed, uint32_t accel) {
 	_Decel = accel;
 }
 
+void U_StepMotor::SetRelativeDir(Dir_Typedef dir) {
+	_RelativeDir = dir;
+}
+
 /*
  * author Romeli
  * explain 移动步进电机
